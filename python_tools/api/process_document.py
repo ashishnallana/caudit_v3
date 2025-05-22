@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from typing import Dict
 from pydantic import BaseModel, HttpUrl
+from datetime import datetime
 from .extract_document import extract_document
 from .extract_document import DocumentUrl
 from .tools.process_document.validate_document import validate_document
 from .tools.process_document.extract_data import extract_data
-from datetime import datetime
+from .tools.process_document.save_to_db import save_to_db
+
 
 router = APIRouter(prefix="/api", tags=["document"])
 
@@ -29,6 +31,7 @@ async def process_document(request: DocumentRequest) -> Dict:
         complete_extracted_data["user_id"] = request.user_id
         complete_extracted_data["source_document_url"] = request.document_url
         complete_extracted_data["created_at"] = datetime.now()
+        saving_to_database = await save_to_db(request.user_id, complete_extracted_data, validation_results["document_type"])
         # print(validation_results)
         
         return {
