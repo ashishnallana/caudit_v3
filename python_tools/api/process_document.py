@@ -22,6 +22,8 @@ async def process_document(request: DocumentRequest) -> Dict:
         
         # Validate the document content
         validation_results = await validate_document(doc_data["content"])
+        # extracted_data = await extract_docuement(doc_data["content"])
+        # print(validation_results)
         
         return {
             "document_url": str(request.document_url),
