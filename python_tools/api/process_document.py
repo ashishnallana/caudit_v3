@@ -4,6 +4,7 @@ from pydantic import BaseModel, HttpUrl
 from .extract_document import extract_document
 from .extract_document import DocumentUrl
 from .tools.process_document.validate_document import validate_document
+from .tools.process_document.extract_data import extract_data
 
 router = APIRouter(prefix="/api", tags=["document"])
 
@@ -22,7 +23,7 @@ async def process_document(request: DocumentRequest) -> Dict:
         
         # Validate the document content
         validation_results = await validate_document(doc_data["content"])
-        # extracted_data = await extract_docuement(doc_data["content"])
+        extracted_data = await extract_data(doc_data["content"],  validation_results["document_type"])
         # print(validation_results)
         
         return {
@@ -31,7 +32,8 @@ async def process_document(request: DocumentRequest) -> Dict:
             "status": "completed" if validation_results["is_valid"] else "validation_failed",
             "total_pages": doc_data["total_pages"],
             "content": doc_data["content"],
-            "validation": validation_results
+            "validation": validation_results,
+            "extracted_data": extracted_data
         }
     
     except Exception as e:
