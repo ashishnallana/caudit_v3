@@ -5,6 +5,7 @@ from .extract_document import extract_document
 from .extract_document import DocumentUrl
 from .tools.process_document.validate_document import validate_document
 from .tools.process_document.extract_data import extract_data
+from datetime import datetime
 
 router = APIRouter(prefix="/api", tags=["document"])
 
@@ -24,6 +25,10 @@ async def process_document(request: DocumentRequest) -> Dict:
         # Validate the document content
         validation_results = await validate_document(doc_data["content"])
         extracted_data = await extract_data(doc_data["content"],  validation_results["document_type"])
+        complete_extracted_data = extracted_data
+        complete_extracted_data["user_id"] = request.user_id
+        complete_extracted_data["source_document_url"] = request.document_url
+        complete_extracted_data["created_at"] = datetime.now()
         # print(validation_results)
         
         return {
@@ -33,7 +38,7 @@ async def process_document(request: DocumentRequest) -> Dict:
             "total_pages": doc_data["total_pages"],
             "content": doc_data["content"],
             "validation": validation_results,
-            "extracted_data": extracted_data
+            "extracted_data": complete_extracted_data
         }
     
     except Exception as e:
