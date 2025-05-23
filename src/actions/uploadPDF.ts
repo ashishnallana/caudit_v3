@@ -6,11 +6,20 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+
 
 
 export async function uploadPDF(formData: FormData, uid: string) {
     try {
+
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+
+        console.log("⭐⭐⭐⭐", token);
+
         const file = formData.get('file') as File
         if (!file) {
             return { success: false, error: 'No file provided' }
@@ -43,6 +52,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
             return { success: false, error: error.message }
         }
 
+        // agent call
         await inngest.send({
             name: Events.PROCESS_DOCUMENT,
             data: {

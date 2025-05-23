@@ -27,13 +27,15 @@ async def process_document(request: DocumentRequest) -> Dict:
         # Validate the document content
         validation_results = await validate_document(doc_data["content"])
         extracted_data = await extract_data(doc_data["content"],  validation_results["document_type"])
-        complete_extracted_data = extracted_data
+        complete_extracted_data = extracted_data["extracted_data"]
+        # print(complete_extracted_data)
         complete_extracted_data["user_id"] = request.user_id
-        complete_extracted_data["source_document_url"] = request.document_url
-        complete_extracted_data["created_at"] = datetime.now()
+        complete_extracted_data["source_document_url"] = str(request.document_url)
+        # complete_extracted_data["created_at"] = datetime.now()
+
         saving_to_database = await save_to_db(request.user_id, complete_extracted_data, validation_results["document_type"])
         # print(validation_results)
-        
+        print(complete_extracted_data)
         return {
             "document_url": str(request.document_url),
             "user_id": request.user_id,
@@ -41,7 +43,8 @@ async def process_document(request: DocumentRequest) -> Dict:
             "total_pages": doc_data["total_pages"],
             "content": doc_data["content"],
             "validation": validation_results,
-            "extracted_data": complete_extracted_data
+            "extracted_data": complete_extracted_data,
+            "saving_to_database": saving_to_database
         }
     
     except Exception as e:
