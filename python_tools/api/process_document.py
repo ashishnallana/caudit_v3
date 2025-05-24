@@ -41,6 +41,7 @@ async def process_document(request: DocumentRequest) -> Dict:
         complete_journal_entry["entry_date"] = saving_to_database["data"][0]["receipt_date"]
         complete_journal_entry["source_type"] = validation_results["document_type"]
         complete_journal_entry["source_document_url"] = str(request.document_url)
+        complete_journal_entry["source_id"] = saving_to_database["data"][0]["id"]
         save_journal_entry = await save_to_db(request.user_id, complete_journal_entry, "journal_entries")
 
         # print(validation_results)
