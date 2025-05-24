@@ -31,15 +31,20 @@ async def process_document(request: DocumentRequest) -> Dict:
         complete_extracted_data = extracted_data["extracted_data"]
         # print(complete_extracted_data)
         complete_extracted_data["user_id"] = request.user_id
-        complete_extracted_data["source_document_url"] = str(request.document_url)
+        complete_extracted_data["source_document_url"] = str(request.document_url) 
         # complete_extracted_data["created_at"] = datetime.now()
         saving_to_database = await save_to_db(request.user_id, complete_extracted_data, validation_results["document_type"])
 
         journal_entry = await create_journal_entry(complete_extracted_data)
+        complete_journal_entry = journal_entry["journal_entries"]
+        complete_journal_entry["user_id"] = request.user_id
+        complete_journal_entry["entry_date"] = saving_to_database["data"][0]["receipt_date"]
+        complete_journal_entry["source_type"] = validation_results["document_type"]
+        complete_journal_entry["source_document_url"] = str(request.document_url)
 
 
         # print(validation_results)
-        print(complete_extracted_data)
+        # print(complete_extracted_data)
         return {
             "document_url": str(request.document_url),
             "user_id": request.user_id,
@@ -49,7 +54,7 @@ async def process_document(request: DocumentRequest) -> Dict:
             "validation": validation_results,
             "extracted_data": complete_extracted_data,
             "saving_to_database": saving_to_database,
-            "journal_entry": journal_entry
+            "journal_entry": complete_journal_entry
         }
     
     except Exception as e:

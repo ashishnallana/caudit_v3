@@ -67,13 +67,13 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
             
         return {
             "success": True,
-            "journal_entries": [data],
+            "journal_entries": data,
             "error": None
         }
         
     except Exception as e:
         return {
             "success": False,
-            "journal_entries": [],
+            "journal_entries": None,
             "error": str(e)
         }
