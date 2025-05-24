@@ -7,6 +7,7 @@ from .extract_document import DocumentUrl
 from .tools.process_document.validate_document import validate_document
 from .tools.process_document.extract_data import extract_data
 from .tools.process_document.save_to_db import save_to_db
+from .tools.process_document.create_journal_entry import create_journal_entry
 
 
 router = APIRouter(prefix="/api", tags=["document"])
@@ -32,8 +33,11 @@ async def process_document(request: DocumentRequest) -> Dict:
         complete_extracted_data["user_id"] = request.user_id
         complete_extracted_data["source_document_url"] = str(request.document_url)
         # complete_extracted_data["created_at"] = datetime.now()
-
         saving_to_database = await save_to_db(request.user_id, complete_extracted_data, validation_results["document_type"])
+
+        journal_entry = await create_journal_entry(complete_extracted_data)
+
+
         # print(validation_results)
         print(complete_extracted_data)
         return {
@@ -44,7 +48,8 @@ async def process_document(request: DocumentRequest) -> Dict:
             "content": doc_data["content"],
             "validation": validation_results,
             "extracted_data": complete_extracted_data,
-            "saving_to_database": saving_to_database
+            "saving_to_database": saving_to_database,
+            "journal_entry": journal_entry
         }
     
     except Exception as e:
