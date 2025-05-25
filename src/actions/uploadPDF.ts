@@ -3,13 +3,23 @@
 import { inngest } from "@/inngest/client";
 import Events from "@/inngest/constants";
 import { createClient } from "@supabase/supabase-js";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-export async function uploadPDF(formData: FormData, uid: string, accessToken: string) {
+export async function uploadPDF(formData: FormData, uid: string) {
     try {
+        // Get the session using server-side Supabase client
+        const cookieStore = cookies();
+        const supabaseServer = createServerComponentClient({ cookies: () => cookieStore });
+        const { data: { session } } = await supabaseServer.auth.getSession();
+
+        if (!session?.access_token) {
+            return { success: false, error: 'No active session found' }
+        }
 
         const file = formData.get('file') as File
         if (!file) {
@@ -48,25 +58,13 @@ export async function uploadPDF(formData: FormData, uid: string, accessToken: st
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({ "document_url": publicUrl }),
         });
 
-        // console.log(response.json());
         const processingResponse = await response.json();
         console.log(processingResponse);
-
-
-
-
-        // await inngest.send({
-        //     name: Events.PROCESS_DOCUMENT,
-        //     data: {
-        //         url: publicUrl,
-        //         userId: uid,
-        //     },
-        // })
 
         return {
             success: true,

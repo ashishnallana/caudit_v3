@@ -4,33 +4,15 @@ import { useRouter } from "next/navigation";
 import { uploadPDF } from "@/actions/uploadPDF";
 import { AlertCircle, CheckCircle, CloudUpload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+import { supabase } from "@/lib/supabase";
 
 function FileDrop() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      const token = data.session?.access_token ?? null;
-      console.log("⭐⭐⭐", token);
-      setAccessToken(token);
-    };
-
-    getSession();
-  }, []);
 
   const handleUpload = useCallback(
     async (files: FileList | File[]) => {
@@ -59,7 +41,7 @@ function FileDrop() {
           const formData = new FormData();
           formData.append("file", file);
 
-          const result = await uploadPDF(formData, user?.id, accessToken);
+          const result = await uploadPDF(formData, user.id);
 
           if (!result.success) {
             throw new Error(result.error);
@@ -73,8 +55,6 @@ function FileDrop() {
         setTimeout(() => {
           setUploadedFiles([]);
         }, 5000);
-
-        // router.push("/receipts");
       } catch (error) {
         console.error("Upload failed:", error);
         alert(
@@ -84,7 +64,7 @@ function FileDrop() {
         setIsUploading(false);
       }
     },
-    [user, router]
+    [user]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -133,8 +113,7 @@ function FileDrop() {
   const isUserSignedIn = !!user;
 
   return (
-    <div>
-      {!accessToken ? (<div>Loading...</div>) : (<div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto">
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -186,7 +165,6 @@ function FileDrop() {
           </ul>
         </div>
       )}
-    </div>)}
     </div>
   );
 }
