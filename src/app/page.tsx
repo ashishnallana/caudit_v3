@@ -5,6 +5,7 @@ export default async function Home() {
     <div>
       <h1>Hello World</h1>
       <FileDrop />
+      <h1>hello world 2</h1>
     </div>
   );
 }
