@@ -8,13 +8,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-export async function uploadPDF(formData: FormData, uid: string) {
+export async function uploadPDF(formData: FormData, uid: string, accessToken: string) {
     try {
-
-        // const session = await supabase.auth.getSession();
-        // const token = session.data.session?.access_token;
-
-        // console.log("⭐⭐⭐⭐", token);
 
         const file = formData.get('file') as File
         if (!file) {
@@ -49,13 +44,29 @@ export async function uploadPDF(formData: FormData, uid: string) {
         }
 
         // agent call
-        await inngest.send({
-            name: Events.PROCESS_DOCUMENT,
-            data: {
-                url: publicUrl,
-                userId: uid,
+        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/process-document`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
             },
-        })
+            body: JSON.stringify({ "document_url": publicUrl }),
+        });
+
+        // console.log(response.json());
+        const processingResponse = await response.json();
+        console.log(processingResponse);
+
+
+
+
+        // await inngest.send({
+        //     name: Events.PROCESS_DOCUMENT,
+        //     data: {
+        //         url: publicUrl,
+        //         userId: uid,
+        //     },
+        // })
 
         return {
             success: true,

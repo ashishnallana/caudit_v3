@@ -21,7 +21,7 @@ req_formats = {
   "purchase_invoices" : {
     "invoice_number": "(text) invoice number",
     "vendor_name" : "(text) name of the vendor",
-    "invoice_date" : "(date) date of the invoice",
+    "date" : "(date) date of the invoice",
     "items" : "([{desc, qty, rate, amount}, …]) list of items",
     "total_amount" : "(number) total amount",
     "tax_amount" : "(number) tax amount",
@@ -30,7 +30,7 @@ req_formats = {
   "sales_invoices": {
     "invoice_number": "(text) Invoice number",
     "customer_name": "(text) Name of the customer",
-    "invoice_date": "(date) Date of the invoice",
+    "date": "(date) Date of the invoice",
     "items": "([{'desc': text, 'qty': number, 'rate': number, 'amount': number}, ...]) List of invoice items",
     "total_amount": "(number) Total amount including all charges",
     "tax_amount": "(number) Tax amount (optional, defaults to 0)",
@@ -40,7 +40,7 @@ req_formats = {
   "cash_receipts": {
     "receipt_number": "(text) Receipt number",
     "payer_name": "(text) Name of the payer",
-    "receipt_date": "(date) Date of the receipt",
+    "date": "(date) Date of the receipt",
     "amount": "(number) Amount received",
     "payment_mode": "(text) Mode of payment (e.g., cash, card, bank transfer)",
     "description": "(text) Generate additional notes or description"
@@ -49,14 +49,14 @@ req_formats = {
   "cash_payments": {
     "payment_number": "(text) Payment number",
     "payee_name": "(text) Name of the payee",
-    "payment_date": "(date) Date of the payment",
+    "date": "(date) Date of the payment",
     "amount": "(number) Amount paid",
     "payment_mode": "(text) Mode of payment (e.g., cash, cheque)",
     "description": "(text) Generate additional notes or description"
   },
 
   "bank_transactions": {
-    "transaction_date": "(date) Date of the transaction",
+    "date": "(date) Date of the transaction",
     "description": "(text) Transaction description",
     "debit_amount": "(number) Amount debited (optional, defaults to 0)",
     "credit_amount": "(number) Amount credited (optional, defaults to 0)",
@@ -67,7 +67,7 @@ req_formats = {
   "expense_bills": {
     "bill_number": "(text) Bill number",
     "vendor_name": "(text) Name of the vendor",
-    "bill_date": "(date) Date of the bill",
+    "date": "(date) Date of the bill",
     "expense_category": "(text) Expense category (e.g., Travel, Utilities)",
     "amount": "(number) Bill amount",
     "tax_amount": "(number) Tax amount (optional, defaults to 0)",

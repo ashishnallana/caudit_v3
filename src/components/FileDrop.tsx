@@ -1,12 +1,19 @@
 "use client";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPDF } from "@/actions/uploadPDF";
 import { AlertCircle, CheckCircle, CloudUpload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 
 function FileDrop() {
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -14,7 +21,16 @@ function FileDrop() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // console.log(user?.id);
+  useEffect(() => {
+    const getSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? null;
+      console.log("⭐⭐⭐", token);
+      setAccessToken(token);
+    };
+
+    getSession();
+  }, []);
 
   const handleUpload = useCallback(
     async (files: FileList | File[]) => {
@@ -43,7 +59,7 @@ function FileDrop() {
           const formData = new FormData();
           formData.append("file", file);
 
-          const result = await uploadPDF(formData, user?.id);
+          const result = await uploadPDF(formData, user?.id, accessToken);
 
           if (!result.success) {
             throw new Error(result.error);
@@ -117,7 +133,8 @@ function FileDrop() {
   const isUserSignedIn = !!user;
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div>
+      {!accessToken ? (<div>Loading...</div>) : (<div className="w-full max-w-md mx-auto">
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -169,6 +186,7 @@ function FileDrop() {
           </ul>
         </div>
       )}
+    </div>)}
     </div>
   );
 }
