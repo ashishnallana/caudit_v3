@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.extract_document import router as document_router
 from api.process_document import router as process_router
+from api.fetch_user_entries import router as user_entries_router
 
 app = FastAPI(title="Document Processing API")
 
@@ -21,6 +22,7 @@ async def root():
 # Include the routers
 app.include_router(document_router)
 app.include_router(process_router)
+app.include_router(user_entries_router)
 
 if __name__ == "__main__":
     import uvicorn
