@@ -35,7 +35,7 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
             Create a correct and valid journal entry from the data provided.
 
             data : {extracted_data_json}
-            create a journal entry in JSON format with the following keys
+            create a journal entry the data in JSON format with the following keys
             {{
                 "account_debited": "(string) debit account name",
                 "account_credited": "(string) credit account name",
@@ -50,7 +50,7 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a smart chatered accountant. Your job is to create correct journal entries from given data."
+                    "content": "You are a smart chatered accountant. Your job is to create correct journal entry from given data."
                 },
                 {
                     "role": "user",
