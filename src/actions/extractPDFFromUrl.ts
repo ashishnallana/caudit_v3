@@ -12,7 +12,7 @@ interface PDFExtractionError {
 
 export async function extractPDFFromUrl(url: string): Promise<PDFExtractionResponse> {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/extract-pdf`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/extract-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

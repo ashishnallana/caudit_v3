@@ -51,7 +51,7 @@ export default function JournalEntriesPage() {
 
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/fetch-user-entries`,
+          `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/user/fetch-user-entries`,
           {
             method: "GET",
             headers: {

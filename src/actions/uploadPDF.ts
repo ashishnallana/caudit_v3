@@ -54,7 +54,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
         }
 
         // agent call
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/process-document`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
