@@ -5,7 +5,7 @@ import requests
 from typing import Dict
 from pydantic import BaseModel, HttpUrl
 
-router = APIRouter(prefix="/api", tags=["document"])
+router = APIRouter()
 
 class DocumentUrl(BaseModel):
     url: HttpUrl

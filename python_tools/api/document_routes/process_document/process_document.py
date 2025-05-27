@@ -4,23 +4,20 @@ import os
 from typing import Dict
 from pydantic import BaseModel, HttpUrl
 from datetime import datetime
-from .extract_document import extract_document
-from .extract_document import DocumentUrl
-from .tools.process_document.validate_document import validate_document
-from .tools.process_document.extract_data import extract_data
-from .tools.process_document.save_to_db import save_to_db
-from .tools.process_document.create_journal_entry import create_journal_entry
+from ..extract_document.extract_document import extract_document
+from ..extract_document.extract_document import DocumentUrl
+from .tools.validate_document import validate_document
+from .tools.extract_data import extract_data
+from .tools.save_to_db import save_to_db
+from .tools.create_journal_entry import create_journal_entry
 
-
-router = APIRouter(prefix="/api", tags=["document"])
+router = APIRouter()
 
 supabase_url = os.getenv("SUPABASE_URL", "")
 supabase_key = os.getenv("SUPABASE_KEY", "")
 
 class DocumentRequest(BaseModel):
     document_url: HttpUrl
-    # user_id: str
-    # token: str
 
 @router.post("/process-document")
 async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
