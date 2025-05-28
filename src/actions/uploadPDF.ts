@@ -1,7 +1,5 @@
 'use server'
 
-import { inngest } from "@/inngest/client";
-import Events from "@/inngest/constants";
 import { createClient } from "@supabase/supabase-js";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";

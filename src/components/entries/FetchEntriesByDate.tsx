@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import FetchEntriesByDate from "@/components/entries/FetchEntriesByDate";
 
 interface JournalEntry {
   id: string;
@@ -19,10 +18,12 @@ interface JournalEntry {
   user_id: string;
 }
 
-export default function JournalEntriesPage() {
+export default function FetchEntriesByDate() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const supabase = createClientComponentClient();
@@ -43,71 +44,107 @@ export default function JournalEntriesPage() {
     getToken();
   }, [supabase]);
 
-  useEffect(() => {
-    const fetchEntries = async () => {
-      if (!accessToken) {
-        setIsLoading(false);
-        return;
-      }
+  const fetchEntries = async () => {
+    if (!accessToken) {
+      setError("No authentication token available");
+      return;
+    }
 
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/user/fetch-user-entries`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
+    if (!startDate) {
+      setError("Please select a start date");
+      return;
+    }
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch entries");
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/user/fetch-user-entries-between-dates`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            start_date: startDate,
+            end_date: endDate || undefined, // Only include if provided
+          }),
         }
+      );
 
-        const res = await response.json();
-        setEntries(res.data || []);
-      } catch (err) {
-        setError("Failed to fetch journal entries");
-        setEntries([]);
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        throw new Error("Failed to fetch entries");
       }
-    };
 
-    fetchEntries();
-  }, [accessToken]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-red-500">
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
+      const res = await response.json();
+      setEntries(res.data || []);
+    } catch (err) {
+      setError("Failed to fetch journal entries");
+      setEntries([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Journal Entries</h1>
-
-      {isLoading === false && entries.length === 0 ? (
-        <div className="text-center text-gray-500">
-          <p>No journal entries found.</p>
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">Filter Entries by Date</h2>
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label
+              htmlFor="startDate"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Start Date
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="endDate"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              End Date (Optional)
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
+          </div>
+          <button
+            onClick={fetchEntries}
+            disabled={isLoading}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            {isLoading ? "Loading..." : "Fetch Entries"}
+          </button>
         </div>
-      ) : (
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : entries.length > 0 ? (
         <div className="overflow-x-auto">
-          <FetchEntriesByDate />
           <table className="min-w-full bg-white rounded-lg shadow-md">
             <thead className="bg-gray-50">
               <tr>
@@ -162,6 +199,10 @@ export default function JournalEntriesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 py-8">
+          <p>No entries found for the selected date range.</p>
         </div>
       )}
     </div>
