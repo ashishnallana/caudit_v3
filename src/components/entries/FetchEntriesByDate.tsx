@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { exportToPdf } from "@/utils/exportToPdf";
+import generateJournalEntry from "@/actions/generateJournalEntry";
 
 interface JournalEntry {
   id: string;
@@ -88,6 +91,11 @@ export default function FetchEntriesByDate() {
     }
   };
 
+  const downloadJournalEntry = async () => {
+    const pdfUrl = await generateJournalEntry(entries);
+    window.open(pdfUrl, "_blank");
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -145,6 +153,26 @@ export default function FetchEntriesByDate() {
         </div>
       ) : entries.length > 0 ? (
         <div className="overflow-x-auto">
+          {/*  */}
+          <button
+            className="bg-green-500 font-bold text-white p-2 rounded-md"
+            onClick={() => exportToExcel(entries, "users.xlsx")}
+          >
+            Download Excel
+          </button>
+          <button
+            className="bg-green-500 font-bold text-white p-2 rounded-md"
+            onClick={() => exportToPdf(entries, "users.pdf")}
+          >
+            Download PDF
+          </button>
+          <button
+            className="bg-green-500 font-bold text-white p-2 rounded-md"
+            onClick={downloadJournalEntry}
+          >
+            Generate Journal Entry
+          </button>
+          {/*  */}
           <table className="min-w-full bg-white rounded-lg shadow-md">
             <thead className="bg-gray-50">
               <tr>

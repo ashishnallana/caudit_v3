@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import FetchEntriesByDate from "@/components/entries/FetchEntriesByDate";
+import generateJournalEntry from "@/actions/generateJournalEntry";
 
 interface JournalEntry {
   id: string;
