@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import FetchEntriesByDate from "@/components/entries/FetchEntriesByDate";
+import generateJournalEntry from "@/actions/generateJournalEntry";
 
 interface JournalEntry {
   id: string;
@@ -100,6 +101,15 @@ export default function JournalEntriesPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Journal Entries</h1>
+      <pre
+        style={{
+          whiteSpace: "pre-wrap",
+          background: "#f4f4f4",
+          padding: "1rem",
+        }}
+      >
+        {generateJournalEntry()}
+      </pre>
 
       {isLoading === false && entries.length === 0 ? (
         <div className="text-center text-gray-500">
