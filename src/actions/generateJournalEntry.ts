@@ -40,26 +40,43 @@ ${rows}
   `;
 };
 
-export default function JournalPdfPage() {
+export default async function JournalPdfPage(entries: any[]) {
   // You would get this from a database or user input in a real app
-  const journalEntries = [
-    {
-      entry_date: "10/04/2018",
-      account_debited: "Cash",
-      account_credited: "Sales",
-      amount: 1500,
-      description: "Sale of goods for cash",
-    },
-    {
-      entry_date: "10/04/2018",
-      account_debited: "Office Supplies",
-      account_credited: "Accounts Payable",
-      amount: 2000,
-      description: "Office supplies purchased on credit",
-    },
-  ];
+//   const journalEntries = [
+//     {
+//       entry_date: "10/04/2018",
+//       account_debited: "Cash",
+//       account_credited: "Sales",
+//       amount: 1500,
+//       description: "Sale of goods for cash",
+//     },
+//     {
+//       entry_date: "10/04/2018",
+//       account_debited: "Office Supplies",
+//       account_credited: "Accounts Payable",
+//       amount: 2000,
+//       description: "Office supplies purchased on credit",
+//     },
+//   ];
 
-  const latexCode = generateLatex(journalEntries);
+  const latexCode = generateLatex(entries);
 
-  return latexCode;
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/latex/convert`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        latex_code: latexCode,
+      }),
+    }
+  );
+
+  const data = await response.json();
+  console.log(data);
+  
+
+  return data.pdf_url;
 }
