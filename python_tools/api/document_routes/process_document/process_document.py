@@ -51,22 +51,24 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         validation_results = await validate_document(doc_data["content"])
         print("⭐⭐", validation_results)
         extracted_data = await extract_data(doc_data["content"],  validation_results["document_type"])
-        complete_extracted_data = extracted_data["extracted_data"]
-        # print(complete_extracted_data)
+        complete_extracted_data = {}
+        complete_extracted_data["extracted_data"] = extracted_data["extracted_data"]
+        complete_extracted_data["document_type"] = validation_results["document_type"]
+        complete_extracted_data["file_url"] = str(payload.document_url)
         complete_extracted_data["user_id"] = user_id
-        complete_extracted_data["source_document_url"] = str(payload.document_url)
         print("⭐⭐⭐", complete_extracted_data)
         # complete_extracted_data["created_at"] = datetime.now()
-        saving_to_database = await save_to_db(user_id, complete_extracted_data, validation_results["document_type"])
+        saving_to_database = await save_to_db(user_id, complete_extracted_data, "documents")
         print("⭐⭐⭐⭐", saving_to_database)
         journal_entry = await create_journal_entry(complete_extracted_data)
         print("⭐⭐⭐⭐⭐", journal_entry)
         complete_journal_entry = journal_entry["journal_entries"]
         complete_journal_entry["user_id"] = user_id
-        complete_journal_entry["entry_date"] = saving_to_database["data"][0]["date"]
-        complete_journal_entry["source_type"] = validation_results["document_type"]
-        complete_journal_entry["source_document_url"] = str(payload.document_url)
+        complete_journal_entry["entry_date"] = saving_to_database["data"][0]["extracted_data"]["date"]
         complete_journal_entry["source_id"] = saving_to_database["data"][0]["id"]
+        
+        # complete_journal_entry["source_type"] = validation_results["document_type"]
+        # complete_journal_entry["source_document_url"] = str(payload.document_url)
         print("⭐⭐⭐⭐⭐⭐", complete_journal_entry)
         save_journal_entry = await save_to_db(user_id, complete_journal_entry, "journal_entries")
         print("⭐⭐⭐⭐⭐⭐⭐", save_journal_entry)
