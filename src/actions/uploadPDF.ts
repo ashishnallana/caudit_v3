@@ -51,6 +51,25 @@ export async function uploadPDF(formData: FormData, uid: string) {
             return { success: false, error: error.message }
         }
 
+        // start a new process
+        const newProcessDetails = {
+            user_id: session.user.id,
+            status: "pending",
+            last_run_at: new Date().toISOString(),
+        };
+
+        const { data: newDocJob, error: jobError } = await supabase
+            .from('document_jobs')
+            .insert(newProcessDetails)
+            .select()
+            .single();
+
+        if (jobError) {
+            console.error('Error creating document job:', jobError);
+            return { success: false, error: jobError.message };
+        }
+
+
         // agent call
         const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`, {
             method: 'POST',
@@ -58,7 +77,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ "document_url": publicUrl }),
+            body: JSON.stringify({ "document_url": publicUrl, "job_id": newDocJob.id }),
         });
 
         const processingResponse = await response.json();

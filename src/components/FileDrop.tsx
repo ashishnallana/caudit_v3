@@ -35,36 +35,48 @@ function FileDrop() {
 
       setIsUploading(true);
 
-      try {
-        const newUploadedFiles: string[] = [];
-        for (const file of pdfFiles) {
-          const formData = new FormData();
-          formData.append("file", file);
+      // Start the upload process and redirect immediately
+      const uploadPromise = (async () => {
+        try {
+          const newUploadedFiles: string[] = [];
+          for (const file of pdfFiles) {
+            const formData = new FormData();
+            formData.append("file", file);
 
-          const result = await uploadPDF(formData, user.id);
+            const result = await uploadPDF(formData, user.id);
 
-          if (!result.success) {
-            throw new Error(result.error);
+            if (!result.success) {
+              throw new Error(result.error);
+            }
+
+            newUploadedFiles.push(file.name);
           }
 
-          newUploadedFiles.push(file.name);
+          setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+          // Clear uploaded files list after 5 seconds
+          setTimeout(() => {
+            setUploadedFiles([]);
+          }, 5000);
+        } catch (error) {
+          console.error("Upload failed:", error);
+          // Since we're redirecting, we'll just log the error
+          console.error(
+            `Upload failed: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          );
+        } finally {
+          setIsUploading(false);
         }
+      })();
 
-        setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
-        // Clear uploaded files list after 5 seconds
-        setTimeout(() => {
-          setUploadedFiles([]);
-        }, 5000);
-      } catch (error) {
-        console.error("Upload failed:", error);
-        alert(
-          `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
-      } finally {
-        setIsUploading(false);
-      }
+      // Redirect to entries page immediately
+      router.push("/entries");
+
+      // Continue processing in the background
+      await uploadPromise;
     },
-    [user]
+    [user, router]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
