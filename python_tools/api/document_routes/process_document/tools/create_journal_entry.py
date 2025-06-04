@@ -29,13 +29,13 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
     try:
         # pass
 
-        extracted_data_json = json.dumps(extracted_data)
+        extracted_data_json = json.dumps(extracted_data["extracted_data"])
 
         prompt =  f"""
             Create a correct and valid journal entry from the data provided.
 
             data : {extracted_data_json}
-            create a journal entry the data in JSON format with the following keys
+            create a journal entry in JSON format with the following keys
             {{
                 "account_debited": "(string) debit account name",
                 "account_credited": "(string) credit account name",
