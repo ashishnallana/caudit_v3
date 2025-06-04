@@ -38,28 +38,27 @@ function FileDrop() {
       // Start the upload process and redirect immediately
       const uploadPromise = (async () => {
         try {
-          const newUploadedFiles: string[] = [];
-          for (const file of pdfFiles) {
+          const uploadPromises = pdfFiles.map(async (file) => {
             const formData = new FormData();
             formData.append("file", file);
-
             const result = await uploadPDF(formData, user.id);
 
             if (!result.success) {
               throw new Error(result.error);
             }
 
-            newUploadedFiles.push(file.name);
-          }
+            return file.name;
+          });
 
+          const newUploadedFiles = await Promise.all(uploadPromises);
           setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+
           // Clear uploaded files list after 5 seconds
           setTimeout(() => {
             setUploadedFiles([]);
           }, 5000);
         } catch (error) {
           console.error("Upload failed:", error);
-          // Since we're redirecting, we'll just log the error
           console.error(
             `Upload failed: ${
               error instanceof Error ? error.message : "Unknown error"
