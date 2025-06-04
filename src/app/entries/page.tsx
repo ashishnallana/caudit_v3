@@ -2,167 +2,140 @@
 
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import FetchEntriesByDate from "@/components/entries/FetchEntriesByDate";
-import generateJournalEntry from "@/actions/generateJournalEntry";
 
-interface JournalEntry {
+interface DocumentJob {
   id: string;
-  account_credited: string;
-  account_debited: string;
-  amount: number;
-  created_at: string;
-  currency: string;
-  description: string;
-  entry_date: string;
-  source_document_url: string;
-  source_id: string;
-  source_type: string;
   user_id: string;
+  status: string;
+  created_at: string;
+  // Add other fields as needed
 }
 
-export default function JournalEntriesPage() {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+export default function EntriesPage() {
+  const [documentJobs, setDocumentJobs] = useState<DocumentJob[]>([]);
+  const [loading, setLoading] = useState(true);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
-    const getToken = async () => {
+    // Initial fetch of document jobs
+    const fetchDocumentJobs = async () => {
       try {
         const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        setAccessToken(session?.access_token || null);
-      } catch (err) {
-        setError("Failed to get authentication token");
-        setIsLoading(false);
-      }
-    };
+          data: { user },
+        } = await supabase.auth.getUser();
 
-    getToken();
-  }, [supabase]);
-
-  useEffect(() => {
-    const fetchEntries = async () => {
-      if (!accessToken) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/user/fetch-user-entries`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch entries");
+        if (!user) {
+          setLoading(false);
+          return;
         }
 
-        const res = await response.json();
-        setEntries(res.data || []);
-      } catch (err) {
-        setError("Failed to fetch journal entries");
-        setEntries([]);
+        const { data, error } = await supabase
+          .from("document_jobs")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching document jobs:", error);
+          return;
+        }
+
+        setDocumentJobs(data || []);
+      } catch (error) {
+        console.error("Error:", error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchEntries();
-  }, [accessToken]);
+    fetchDocumentJobs();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+    // Set up real-time subscription
+    const channel = supabase
+      .channel("document_jobs_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "document_jobs",
+        },
+        async (payload) => {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
 
-  if (error) {
+          // Only update if the change is for the current user
+          if (
+            payload.new &&
+            "user_id" in payload.new &&
+            payload.new.user_id === user.id
+          ) {
+            setDocumentJobs((currentJobs) => {
+              if (payload.eventType === "INSERT") {
+                return [payload.new as DocumentJob, ...currentJobs];
+              } else if (payload.eventType === "UPDATE") {
+                return currentJobs.map((job) =>
+                  job.id === payload.new.id ? (payload.new as DocumentJob) : job
+                );
+              } else if (payload.eventType === "DELETE") {
+                return currentJobs.filter((job) => job.id !== payload.old.id);
+              }
+              return currentJobs;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
+
+  if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-red-500">
-          <p>{error}</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Journal Entries</h1>
-
-      {isLoading === false && entries.length === 0 ? (
-        <div className="text-center text-gray-500">
-          <p>No journal entries found.</p>
-        </div>
+      <h1 className="text-2xl font-bold mb-6">Your Document Jobs</h1>
+      {documentJobs.length === 0 ? (
+        <p className="text-gray-500">No document jobs found.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <FetchEntriesByDate />
-          <table className="min-w-full bg-white rounded-lg shadow-md">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Currency
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Account Debited
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Account Credited
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Entry Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created At
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {entries.map((entry, i) => (
-                <tr key={entry.id || i} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {entry.description}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {entry.amount}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {entry.currency}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {entry.account_debited}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {entry.account_credited}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(entry.entry_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(entry.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4">
+          {documentJobs.map((job) => (
+            <div
+              key={job.id}
+              className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">Job ID: {job.id}</p>
+                  <p className="text-sm text-gray-500">
+                    Created: {new Date(job.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    job.status === "completed"
+                      ? "bg-green-100 text-green-800"
+                      : job.status === "processing"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {job.status}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

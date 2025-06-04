@@ -56,6 +56,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
             user_id: session.user.id,
             status: "pending",
             last_run_at: new Date().toISOString(),
+            file_url: publicUrl,
         };
 
         const { data: newDocJob, error: jobError } = await supabase
