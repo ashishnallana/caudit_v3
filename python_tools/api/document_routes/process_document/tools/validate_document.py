@@ -64,7 +64,7 @@ async def validate_document(content: List[str]) -> Dict:
             "confidence_score": float,
             "explanation": string
         }}
-        """
+        """ 
 
         # Call OpenAI API
         response = client.chat.completions.create(

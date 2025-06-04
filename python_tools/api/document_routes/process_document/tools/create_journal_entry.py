@@ -50,7 +50,7 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a smart chatered accountant. Your job is to create correct journal entry from given data."
+                    "content": "You are a smart accountant. Your job is to create journal entry from given data."
                 },
                 {
                     "role": "user",
