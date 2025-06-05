@@ -87,7 +87,11 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         # end of process
         result = await update_in_db(
             item_id=str(payload.job_id),
-            updated_data={"status": "parsed"},
+            updated_data={
+                "status": "parsed",
+                "document_id": saving_to_database["data"][0]["id"],
+                "journal_entry_id": save_journal_entry["data"][0]["id"]
+                },
             table_name="document_jobs"
         )
 
