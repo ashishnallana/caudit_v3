@@ -3,12 +3,28 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
+interface Document {
+  id: string;
+  file_url: string;
+  extracted_data: any;
+}
+
+interface JournalEntry {
+  id: string;
+  entry_date: string;
+  account_debited: string;
+  account_credited: string;
+  amount: number;
+  description?: string;
+}
+
 interface DocumentJob {
   id: string;
   user_id: string;
   status: string;
   created_at: string;
-  // Add other fields as needed
+  documents?: Document;
+  journal_entries?: JournalEntry;
 }
 
 export default function EntriesPage() {
@@ -17,7 +33,6 @@ export default function EntriesPage() {
   const supabase = createClientComponentClient();
 
   useEffect(() => {
-    // Initial fetch of document jobs
     const fetchDocumentJobs = async () => {
       try {
         const {
@@ -31,7 +46,24 @@ export default function EntriesPage() {
 
         const { data, error } = await supabase
           .from("document_jobs")
-          .select("*")
+          .select(
+            `
+            *,
+            documents:document_id (
+              id,
+              file_url,
+              extracted_data
+            ),
+            journal_entries:journal_entry_id (
+              id,
+              entry_date,
+              account_debited,
+              account_credited,
+              amount,
+              description
+            )
+          `
+          )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -66,7 +98,6 @@ export default function EntriesPage() {
           } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Only update if the change is for the current user
           if (
             payload.new &&
             "user_id" in payload.new &&
@@ -89,7 +120,6 @@ export default function EntriesPage() {
       )
       .subscribe();
 
-    // Cleanup subscription
     return () => {
       supabase.removeChannel(channel);
     };
@@ -124,9 +154,9 @@ export default function EntriesPage() {
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-sm ${
-                    job.status === "completed"
+                    job.status === "parsed"
                       ? "bg-green-100 text-green-800"
-                      : job.status === "processing"
+                      : job.status === "in_progress"
                       ? "bg-blue-100 text-blue-800"
                       : "bg-gray-100 text-gray-800"
                   }`}
@@ -134,6 +164,42 @@ export default function EntriesPage() {
                   {job.status}
                 </span>
               </div>
+
+              {job.status === "parsed" && (
+                <div className="mt-4 text-sm text-gray-700 space-y-2">
+                  {job.documents && (
+                    <div>
+                      <p className="font-semibold">Document:</p>
+                      <p>
+                        File URL:{" "}
+                        <a
+                          href={job.documents.file_url}
+                          className="text-blue-500 underline"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {job.documents.file_url}
+                        </a>
+                      </p>
+                      <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+                        {JSON.stringify(job.documents.extracted_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  {job.journal_entries && (
+                    <div>
+                      <p className="font-semibold mt-2">Journal Entry:</p>
+                      <p>Date: {job.journal_entries.entry_date}</p>
+                      <p>Debit: {job.journal_entries.account_debited}</p>
+                      <p>Credit: {job.journal_entries.account_credited}</p>
+                      <p>Amount: {job.journal_entries.amount}</p>
+                      {job.journal_entries.description && (
+                        <p>Description: {job.journal_entries.description}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
