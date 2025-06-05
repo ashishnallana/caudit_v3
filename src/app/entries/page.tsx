@@ -183,42 +183,6 @@ export default function EntriesPage() {
                   )}
                 </div>
               </div>
-
-              {job.status === "parsed" && (
-                <div className="mt-4 text-sm text-gray-700 space-y-2">
-                  {job.documents && (
-                    <div>
-                      <p className="font-semibold">Document:</p>
-                      <p>
-                        File URL:{" "}
-                        <a
-                          href={job.documents.file_url}
-                          className="text-blue-500 underline"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {job.documents.file_url}
-                        </a>
-                      </p>
-                      <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
-                        {JSON.stringify(job.documents.extracted_data, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {job.journal_entries && (
-                    <div>
-                      <p className="font-semibold mt-2">Journal Entry:</p>
-                      <p>Date: {job.journal_entries.entry_date}</p>
-                      <p>Debit: {job.journal_entries.account_debited}</p>
-                      <p>Credit: {job.journal_entries.account_credited}</p>
-                      <p>Amount: {job.journal_entries.amount}</p>
-                      {job.journal_entries.description && (
-                        <p>Description: {job.journal_entries.description}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ))}
         </div>
