@@ -11,6 +11,7 @@ from .tools.extract_data import extract_data
 from .tools.save_to_db import save_to_db
 from .tools.update_in_db import update_in_db
 from .tools.create_journal_entry import create_journal_entry
+from .tools.create_ledger_entry import create_ledger_entry
 
 router = APIRouter()
 
@@ -84,13 +85,33 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         save_journal_entry = await save_to_db(user_id, complete_journal_entry, "journal_entries")
         print("⭐⭐⭐⭐⭐⭐⭐", save_journal_entry)
 
+        # ledger entry 
+        # here we return two ledger entries for each of the account involved in the transaction.
+        ledger_entries = await create_ledger_entry(complete_journal_entry)
+        print("⭐⭐⭐⭐⭐⭐⭐⭐", ledger_entries)
+
+        # saving ledger entries
+        save_entry_results = []
+        for entry in ledger_entries["ledger_entries"]:
+            complete_entry = entry
+            complete_entry["user_id"] = user_id
+            complete_entry["journal_entry_id"] = save_journal_entry["data"][0]["id"]
+            save_entry = await save_to_db(user_id, complete_entry, "ledger_entries")
+            save_entry_results.append(save_entry)
+        
+        print("⭐⭐⭐⭐⭐⭐⭐⭐⭐", save_entry_results)
+
+        
+
         # end of process
         result = await update_in_db(
             item_id=str(payload.job_id),
             updated_data={
                 "status": "parsed",
                 "document_id": saving_to_database["data"][0]["id"],
-                "journal_entry_id": save_journal_entry["data"][0]["id"]
+                "journal_entry_id": save_journal_entry["data"][0]["id"],
+                "debit_ledger_entry_id": save_entry_results[0]["data"][0]["id"],
+                "credit_ledger_entry_id": save_entry_results[1]["data"][0]["id"]
                 },
             table_name="document_jobs"
         )

@@ -42,6 +42,8 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
                 "amount": "(number) amount involved",
                 "description": "(string) a basic journal description"
             }}
+
+            Make sure account names end with "A/c" example : Cash A/c, Bank A/c etc.
         """
 
         # Call OpenAI API
