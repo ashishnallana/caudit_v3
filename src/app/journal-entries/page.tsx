@@ -7,6 +7,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { exportToPdf } from "@/utils/exportToPdf";
 import generateJournalEntry from "@/actions/generateJournalEntry";
 import DateRangeModal from "@/components/DateRangeModal";
+import JournalEntryTable from "@/components/JournalEntryTable";
 
 interface JournalEntry {
   id: string;
@@ -195,7 +196,7 @@ export default function JournalEntriesPage() {
               Generate Journal Entry
             </button>
           </div>
-          <DataTable data={filteredEntries} columns={columns} keyField="id" />
+          <JournalEntryTable entries={filteredEntries} />
         </div>
       )}
 
