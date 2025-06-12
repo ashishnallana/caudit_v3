@@ -6,7 +6,7 @@ import DataTable from "@/components/DataTable";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { exportToPdf } from "@/utils/exportToPdf";
 import generateJournalEntry from "@/actions/generateJournalEntry";
-import DateRangeModal from "@/components/journal-entries/DateRangeModal";
+import DateRangeModal from "@/components/DateRangeModal";
 
 interface JournalEntry {
   id: string;
