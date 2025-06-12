@@ -18,6 +18,17 @@ interface JournalEntry {
   account_credited: string;
   amount: number;
   description?: string;
+  ledger_entries?: LedgerEntry[];
+}
+
+interface LedgerEntry {
+  id: string;
+  account_name: string;
+  entry_date: string;
+  transaction_type: "debit" | "credit";
+  amount: number;
+  description?: string;
+  created_at: string;
 }
 
 interface DocumentJob {
@@ -63,7 +74,16 @@ export default function JobDetailsPage() {
               account_debited,
               account_credited,
               amount,
-              description
+              description,
+              ledger_entries (
+                id,
+                account_name,
+                entry_date,
+                transaction_type,
+                amount,
+                description,
+                created_at
+              )
             )
           `
           )
@@ -194,6 +214,25 @@ export default function JobDetailsPage() {
                     {job.journal_entries.description}
                   </p>
                 )}
+
+                {job.journal_entries.ledger_entries &&
+                  job.journal_entries.ledger_entries.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="font-medium mb-2">
+                        Involved Ledger Books:
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {job.journal_entries.ledger_entries.map((entry) => (
+                          <button
+                            key={entry.id}
+                            className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
+                          >
+                            {entry.account_name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           )}
