@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
+import LedgerTable from "@/components/LedgerTable";
 
 interface LedgerEntry {
   id: string;
@@ -136,60 +137,14 @@ export default function LedgerDetailsPage() {
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold mb-4">Transaction History</h2>
-      {ledgerEntries.length === 0 ? (
-        <p className="text-gray-500">No transactions found.</p>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {ledgerEntries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(entry.entry_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        entry.transaction_type === "debit"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {entry.transaction_type.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {entry.amount.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "INR",
-                    })}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {entry.description || "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <h1 className="text-3xl font-bold mb-6 text-center">
+        {ledgerBalance.account_name}
+      </h1>
+      <h2 className="text-2xl font-bold mb-4">Ledger Account</h2>
+      <LedgerTable
+        ledgerEntries={ledgerEntries}
+        ledgerBalance={ledgerBalance}
+      />
     </div>
   );
 }
