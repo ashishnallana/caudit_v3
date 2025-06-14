@@ -25,6 +25,10 @@ export default function TrialBalancePage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentSelectedDate, setCurrentSelectedDate] = useState<string | null>(
+    null
+  );
+  const [appliedDate, setAppliedDate] = useState<string | null>(null);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
@@ -40,49 +44,96 @@ export default function TrialBalancePage() {
           return;
         }
 
-        // Get all ledger balances
-        const { data: balances, error: balancesError } = await supabase
-          .from("ledger_balances")
-          .select("*")
-          .eq("user_id", session.user.id);
+        let calculatedDebitAccounts: TrialBalanceAccount[] = [];
+        let calculatedCreditAccounts: TrialBalanceAccount[] = [];
+        let calculatedTotalDebit = 0;
+        let calculatedTotalCredit = 0;
 
-        if (balancesError) throw balancesError;
+        if (appliedDate) {
+          const { data: uniqueAccounts, error: uniqueAccountsError } =
+            await supabase
+              .from("ledger_balances")
+              .select("account_name")
+              .eq("user_id", session.user.id);
 
-        // Separate accounts into debit and credit
-        const debitAccounts: TrialBalanceAccount[] = [];
-        const creditAccounts: TrialBalanceAccount[] = [];
-        let totalDebit = 0;
-        let totalCredit = 0;
+          if (uniqueAccountsError) throw uniqueAccountsError;
 
-        balances?.forEach((balance) => {
-          const account: TrialBalanceAccount = {
-            account_name: balance.account_name,
-            balance_amount: Math.abs(balance.balance_amount),
-            last_updated_at: balance.last_updated_at,
-          };
+          const accountBalances: { [key: string]: number } = {};
 
-          if (balance.balance_amount >= 0) {
-            debitAccounts.push(account);
-            totalDebit += balance.balance_amount;
-          } else {
-            creditAccounts.push(account);
-            totalCredit += Math.abs(balance.balance_amount);
+          for (const account of uniqueAccounts || []) {
+            const { data: entries, error: entriesError } = await supabase
+              .from("ledger_entries")
+              .select("transaction_type, amount, entry_date")
+              .eq("user_id", session.user.id)
+              .eq("account_name", account.account_name)
+              .lte("entry_date", appliedDate);
+
+            if (entriesError) throw entriesError;
+
+            let netBalance = 0;
+            entries?.forEach((entry) => {
+              if (entry.transaction_type === "debit") {
+                netBalance += entry.amount;
+              } else {
+                netBalance -= entry.amount;
+              }
+            });
+            accountBalances[account.account_name] = netBalance;
           }
-        });
 
-        // Sort accounts alphabetically
-        debitAccounts.sort((a, b) =>
+          Object.keys(accountBalances).forEach((account_name) => {
+            const balance = accountBalances[account_name];
+            const account: TrialBalanceAccount = {
+              account_name,
+              balance_amount: Math.abs(balance),
+              last_updated_at: new Date().toISOString(),
+            };
+
+            if (balance >= 0) {
+              calculatedDebitAccounts.push(account);
+              calculatedTotalDebit += balance;
+            } else {
+              calculatedCreditAccounts.push(account);
+              calculatedTotalCredit += Math.abs(balance);
+            }
+          });
+        } else {
+          const { data: balances, error: balancesError } = await supabase
+            .from("ledger_balances")
+            .select("*")
+            .eq("user_id", session.user.id);
+
+          if (balancesError) throw balancesError;
+
+          balances?.forEach((balance) => {
+            const account: TrialBalanceAccount = {
+              account_name: balance.account_name,
+              balance_amount: Math.abs(balance.balance_amount),
+              last_updated_at: balance.last_updated_at,
+            };
+
+            if (balance.balance_amount >= 0) {
+              calculatedDebitAccounts.push(account);
+              calculatedTotalDebit += balance.balance_amount;
+            } else {
+              calculatedCreditAccounts.push(account);
+              calculatedTotalCredit += Math.abs(balance.balance_amount);
+            }
+          });
+        }
+
+        calculatedDebitAccounts.sort((a, b) =>
           a.account_name.localeCompare(b.account_name)
         );
-        creditAccounts.sort((a, b) =>
+        calculatedCreditAccounts.sort((a, b) =>
           a.account_name.localeCompare(b.account_name)
         );
 
         setTrialBalance({
-          debit: debitAccounts,
-          credit: creditAccounts,
-          total_debit: totalDebit,
-          total_credit: totalCredit,
+          debit: calculatedDebitAccounts,
+          credit: calculatedCreditAccounts,
+          total_debit: calculatedTotalDebit,
+          total_credit: calculatedTotalCredit,
         });
       } catch (err) {
         setError("Failed to fetch trial balance");
@@ -92,7 +143,7 @@ export default function TrialBalancePage() {
     };
 
     fetchTrialBalance();
-  }, [supabase]);
+  }, [supabase, appliedDate]);
 
   if (isLoading) {
     return (
@@ -116,6 +167,42 @@ export default function TrialBalancePage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Trial Balance</h1>
 
+      <div className="mb-6 flex items-end">
+        <div className="mr-4">
+          <label
+            htmlFor="selectDate"
+            className="block text-gray-700 text-sm font-bold mb-2"
+          >
+            Trial Balance as of:
+          </label>
+          <input
+            type="date"
+            id="selectDate"
+            value={currentSelectedDate || ""}
+            onChange={(e) => setCurrentSelectedDate(e.target.value)}
+            className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          />
+        </div>
+        <button
+          onClick={() => setAppliedDate(currentSelectedDate)}
+          disabled={!currentSelectedDate}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:shadow-outline"
+        >
+          Apply Date
+        </button>
+        {appliedDate && (
+          <button
+            onClick={() => {
+              setCurrentSelectedDate(null);
+              setAppliedDate(null);
+            }}
+            className="ml-4 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 focus:outline-none focus:shadow-outline"
+          >
+            Clear Date
+          </button>
+        )}
+      </div>
+
       {trialBalance.debit.length === 0 && trialBalance.credit.length === 0 ? (
         <p className="text-gray-500">No accounts found.</p>
       ) : (
@@ -129,7 +216,6 @@ export default function TrialBalancePage() {
               </tr>
             </thead>
             <tbody className="text-gray-600 text-sm font-light">
-              {/* Combine and sort all accounts */}
               {[...trialBalance.debit, ...trialBalance.credit]
                 .sort((a, b) => a.account_name.localeCompare(b.account_name))
                 .map((account) => (
@@ -162,7 +248,6 @@ export default function TrialBalancePage() {
                     </td>
                   </tr>
                 ))}
-              {/* Total Row */}
               <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal font-bold">
                 <td className="py-3 px-6 text-left">Total</td>
                 <td className="py-3 px-6 text-right">
