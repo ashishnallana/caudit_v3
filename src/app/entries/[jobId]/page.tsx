@@ -29,6 +29,7 @@ interface LedgerEntry {
   amount: number;
   description?: string;
   created_at: string;
+  ledger_balance_id: string;
 }
 
 interface DocumentJob {
@@ -82,7 +83,8 @@ export default function JobDetailsPage() {
                 transaction_type,
                 amount,
                 description,
-                created_at
+                created_at,
+                ledger_balance_id
               )
             )
           `
@@ -223,12 +225,13 @@ export default function JobDetailsPage() {
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {job.journal_entries.ledger_entries.map((entry) => (
-                          <button
+                          <Link
                             key={entry.id}
+                            href={`/ledgers/${entry.ledger_balance_id}`}
                             className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
                           >
                             {entry.account_name}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     </div>

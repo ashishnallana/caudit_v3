@@ -40,6 +40,11 @@ export default function LedgersPage() {
 
         if (uniqueAccountsError) throw uniqueAccountsError;
 
+        // Get unique account names by filtering duplicates
+        const uniqueAccountNames = Array.from(
+          new Set(uniqueAccounts?.map((entry) => entry.account_name))
+        ).map((account_name) => ({ account_name }));
+
         // Get the corresponding balances
         const { data: balances, error: balancesError } = await supabase
           .from("ledger_balances")
@@ -49,7 +54,7 @@ export default function LedgersPage() {
         if (balancesError) throw balancesError;
 
         // Combine the data
-        const accounts = uniqueAccounts.map((entry) => {
+        const accounts = uniqueAccountNames.map((entry) => {
           const balance = balances?.find(
             (b) => b.account_name === entry.account_name
           );
