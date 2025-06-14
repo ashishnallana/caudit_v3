@@ -55,11 +55,11 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         doc_data = await extract_document(DocumentUrl(url=payload.document_url))
         
         # Validate the document content
-        validation_results = await validate_document(doc_data["content"])
+        validation_results = await validate_document(doc_data["content"], payload.job_id)
         print("⭐⭐", validation_results)
 
         # extract doc data
-        extracted_data = await extract_data(doc_data["content"],  validation_results["document_type"])
+        extracted_data = await extract_data(doc_data["content"], validation_results["document_type"], payload.job_id)
         complete_extracted_data = {}
         complete_extracted_data["extracted_data"] = extracted_data["extracted_data"]
         complete_extracted_data["document_type"] = validation_results["document_type"]
@@ -73,7 +73,7 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         print("⭐⭐⭐⭐", saving_to_database)
 
         # create journal entry
-        journal_entry = await create_journal_entry(complete_extracted_data)
+        journal_entry = await create_journal_entry(complete_extracted_data, payload.job_id)
         print("⭐⭐⭐⭐⭐", journal_entry)
         complete_journal_entry = journal_entry["journal_entries"]
         complete_journal_entry["user_id"] = user_id
@@ -87,7 +87,7 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
 
         # ledger entry 
         # here we return two ledger entries for each of the account involved in the transaction.
-        ledger_entries = await create_ledger_entry(complete_journal_entry)
+        ledger_entries = await create_ledger_entry(complete_journal_entry, payload.job_id)
         print("⭐⭐⭐⭐⭐⭐⭐⭐", ledger_entries)
 
         # saving ledger entries
@@ -101,8 +101,6 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         
         print("⭐⭐⭐⭐⭐⭐⭐⭐⭐", save_entry_results)
 
-        
-
         # end of process
         result = await update_in_db(
             item_id=str(payload.job_id),
@@ -115,7 +113,6 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
                 },
             table_name="document_jobs"
         )
-
 
         return {
             "document_url": str(payload.document_url),
@@ -131,4 +128,15 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         }
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+        error_message = str(e)
+        # Update the job status to failed with error message
+        await update_in_db(
+            item_id=str(payload.job_id),
+            updated_data={
+                "status": "failed",
+                "error_message": error_message,
+                "last_run_at": datetime.utcnow().isoformat()
+            },
+            table_name="document_jobs"
+        )
+        raise HTTPException(status_code=500, detail=f"Error processing document: {error_message}")

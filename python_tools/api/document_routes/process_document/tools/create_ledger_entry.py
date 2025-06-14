@@ -6,6 +6,7 @@ from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 import json
+from .update_in_db import update_in_db
 
 # Load environment variables
 load_dotenv()
@@ -16,7 +17,7 @@ client = OpenAI(
     api_key="ollama",  # required, but unused
 )
 
-async def create_ledger_entry(journal_entry: Dict) -> Dict:
+async def create_ledger_entry(journal_entry: Dict, job_id: str = None) -> Dict:
     """
     Create ledger entries based on the journal entry data.
 
@@ -24,6 +25,7 @@ async def create_ledger_entry(journal_entry: Dict) -> Dict:
     
     Args:
         journal_entry (Dict): The journal entry data containing debit and credit information
+        job_id (str, optional): The ID of the job for error tracking
         
     Returns:
         Dict: Ledger entries for both debit and credit accounts
@@ -59,8 +61,19 @@ async def create_ledger_entry(journal_entry: Dict) -> Dict:
         }
         
     except Exception as e:
+        error_message = str(e)
+        if job_id:
+            await update_in_db(
+                item_id=job_id,
+                updated_data={
+                    "status": "failed",
+                    "error_message": f"Error creating ledger entry: {error_message}",
+                    "last_run_at": datetime.utcnow().isoformat()
+                },
+                table_name="document_jobs"
+            )
         return {
             "success": False,
             "ledger_entries": None,
-            "error": str(e)
+            "error": error_message
         } 

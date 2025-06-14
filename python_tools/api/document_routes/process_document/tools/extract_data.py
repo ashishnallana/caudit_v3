@@ -7,6 +7,8 @@ from typing import Dict, List
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from datetime import datetime
+from .update_in_db import update_in_db
 
 # Load environment variables
 load_dotenv()
@@ -76,7 +78,7 @@ req_formats = {
 }
 
 
-async def extract_data(content: List[str], document_type: str) -> Dict:
+async def extract_data(content: List[str], document_type: str, job_id: str = None) -> Dict:
     """
     Extract structured data from document content based on document type
     """
@@ -87,7 +89,18 @@ async def extract_data(content: List[str], document_type: str) -> Dict:
         # Get fields for the specific document type
         fields = req_formats.get(document_type, {})
         if not fields:
-            raise HTTPException(status_code=400, detail=f"Unsupported document type: {document_type}")
+            error_message = f"Unsupported document type: {document_type}"
+            if job_id:
+                await update_in_db(
+                    item_id=job_id,
+                    updated_data={
+                        "status": "failed",
+                        "error_message": error_message,
+                        "last_run_at": datetime.utcnow().isoformat()
+                    },
+                    table_name="document_jobs"
+                )
+            raise HTTPException(status_code=400, detail=error_message)
 
         # Prepare the prompt for data extraction
         prompt = f"""
@@ -131,8 +144,16 @@ async def extract_data(content: List[str], document_type: str) -> Dict:
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error during data extraction: {str(e)}"
-        )
+        error_message = f"Error during data extraction: {str(e)}"
+        if job_id:
+            await update_in_db(
+                item_id=job_id,
+                updated_data={
+                    "status": "failed",
+                    "error_message": error_message,
+                    "last_run_at": datetime.utcnow().isoformat()
+                },
+                table_name="document_jobs"
+            )
+        raise HTTPException(status_code=500, detail=error_message)
 

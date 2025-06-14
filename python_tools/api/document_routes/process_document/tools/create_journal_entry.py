@@ -6,6 +6,7 @@ from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 import json
+from .update_in_db import update_in_db
 
 # Load environment variables
 load_dotenv()
@@ -16,19 +17,18 @@ client = OpenAI(
     api_key="ollama",  # required, but unused
 )
 
-async def create_journal_entry(extracted_data: Dict) -> Dict:
+async def create_journal_entry(extracted_data: Dict, job_id: str = None) -> Dict:
     """
     Create journal entries based on the extracted document data.
     
     Args:
         extracted_data (Dict): The extracted data from the document
+        job_id (str, optional): The ID of the job for error tracking
         
     Returns:
         Dict: Journal entries with debit and credit transactions
     """
     try:
-        # pass
-
         extracted_data_json = json.dumps(extracted_data["extracted_data"])
 
         prompt =  f"""
@@ -64,7 +64,6 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
         )
 
         journal_json = response.choices[0].message.content
-        # import json
         data = json.loads(journal_json)
             
         return {
@@ -74,8 +73,19 @@ async def create_journal_entry(extracted_data: Dict) -> Dict:
         }
         
     except Exception as e:
+        error_message = str(e)
+        if job_id:
+            await update_in_db(
+                item_id=job_id,
+                updated_data={
+                    "status": "failed",
+                    "error_message": f"Error creating journal entry: {error_message}",
+                    "last_run_at": datetime.utcnow().isoformat()
+                },
+                table_name="document_jobs"
+            )
         return {
             "success": False,
             "journal_entries": None,
-            "error": str(e)
+            "error": error_message
         }
