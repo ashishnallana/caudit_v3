@@ -35,45 +35,32 @@ function FileDrop() {
 
       setIsUploading(true);
 
-      // Start the upload process and redirect immediately
-      const uploadPromise = (async () => {
-        try {
-          const uploadPromises = pdfFiles.map(async (file) => {
-            const formData = new FormData();
-            formData.append("file", file);
-            const result = await uploadPDF(formData, user.id);
+      try {
+        // Upload files one by one to show progress
+        for (const file of pdfFiles) {
+          const formData = new FormData();
+          formData.append("file", file);
+          const result = await uploadPDF(formData, user.id);
 
-            if (!result.success) {
-              throw new Error(result.error);
-            }
+          if (!result.success) {
+            throw new Error(result.error);
+          }
 
-            return file.name;
-          });
-
-          const newUploadedFiles = await Promise.all(uploadPromises);
-          setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
-
-          // Clear uploaded files list after 5 seconds
-          setTimeout(() => {
-            setUploadedFiles([]);
-          }, 5000);
-        } catch (error) {
-          console.error("Upload failed:", error);
-          console.error(
-            `Upload failed: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }`
-          );
-        } finally {
-          setIsUploading(false);
+          // Update uploaded files list immediately after each successful upload
+          setUploadedFiles((prev) => [...prev, file.name]);
         }
-      })();
 
-      // Redirect to entries page immediately
-      router.push("/entries");
-
-      // Continue processing in the background
-      await uploadPromise;
+        // Redirect after all uploads are complete
+        router.push("/entries");
+      } catch (error) {
+        console.error("Upload failed:", error);
+        console.error(
+          `Upload failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+        setIsUploading(false);
+      }
     },
     [user, router]
   );

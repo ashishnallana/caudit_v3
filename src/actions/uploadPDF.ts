@@ -51,7 +51,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
             return { success: false, error: error.message }
         }
 
-        // start a new process
+        // Create document job
         const newProcessDetails = {
             user_id: session.user.id,
             status: "pending",
@@ -70,19 +70,17 @@ export async function uploadPDF(formData: FormData, uid: string) {
             return { success: false, error: jobError.message };
         }
 
-
-        // agent call
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`, {
+        // Start processing in the background without waiting for it
+        fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({ "document_url": publicUrl, "job_id": newDocJob.id }),
+        }).catch(error => {
+            console.error('Error starting document processing:', error);
         });
-
-        const processingResponse = await response.json();
-        console.log(processingResponse);
 
         return {
             success: true,
