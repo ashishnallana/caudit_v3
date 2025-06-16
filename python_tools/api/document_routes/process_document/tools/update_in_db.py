@@ -1,7 +1,7 @@
 """
-saves the extracted data into proper table.
+Updates existing data in the specified table.
 """
-from typing import Dict, List
+from typing import Dict
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -15,31 +15,27 @@ supabase_url = os.getenv("SUPABASE_URL", "")
 supabase_key = os.getenv("SUPABASE_KEY", "")
 supabase = create_client(supabase_url, supabase_key)
 
-async def save_to_db(user_id: str, extracted_data: Dict, table_name: str) -> Dict:
+async def update_in_db(item_id: str, updated_data: Dict, table_name: str) -> Dict:
     """
-    Save extracted data to the specified Supabase table.
+    Update existing data in the specified Supabase table.
     
     Args:
-        user_id (str): The ID of the user (should match auth.uid())
-        extracted_data (Dict): The data to be saved
-        table_name (str): The name of the table to save to
+        item_id (str): The ID of the item to update
+        updated_data (Dict): The data to be updated
+        table_name (str): The name of the table to update
         
     Returns:
-        Dict: Response containing the saved data or error information
+        Dict: Response containing the updated data or error information
     """
     try:
-        # Add user_id to the data if not present
-        if 'user_id' not in extracted_data:
-            extracted_data['user_id'] = user_id
-            
-        # Insert data into the specified table
-        response = supabase.table(table_name).insert(extracted_data).execute()
+        # Update data in the specified table
+        response = supabase.table(table_name).update(updated_data).eq('id', item_id).execute()
         
         if hasattr(response, 'error') and response.error:
             error_message = str(response.error)
-            # If this is a document_jobs table save, update the status to failed
+            # If this is a document_jobs table update, update the status to failed
             if table_name == "document_jobs":
-                await update_job_status(extracted_data.get('job_id'), error_message)
+                await update_job_status(item_id, error_message)
             return {
                 "success": False,
                 "error": error_message,
@@ -54,9 +50,9 @@ async def save_to_db(user_id: str, extracted_data: Dict, table_name: str) -> Dic
         
     except Exception as e:
         error_message = str(e)
-        # If this is a document_jobs table save, update the status to failed
+        # If this is a document_jobs table update, update the status to failed
         if table_name == "document_jobs":
-            await update_job_status(extracted_data.get('job_id'), error_message)
+            await update_job_status(item_id, error_message)
         return {
             "success": False,
             "error": error_message,
@@ -75,4 +71,4 @@ async def update_job_status(job_id: str, error_message: str) -> None:
         }).eq('id', job_id).execute()
     except Exception:
         # If this fails, we can't do much more
-        pass
+        pass 

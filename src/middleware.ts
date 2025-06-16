@@ -3,13 +3,18 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-    const res = NextResponse.next()
-    const supabase = createMiddlewareClient({ req, res })
+    try {
+        const res = NextResponse.next()
+        const supabase = createMiddlewareClient({ req, res })
 
-    // Refresh session if expired - required for Server Components
-    await supabase.auth.getSession()
+        // Refresh session if expired - required for Server Components
+        const { data: { session } } = await supabase.auth.getSession()
 
-    return res
+        return res
+    } catch (error) {
+        // If there's an error, still return the response to prevent the app from breaking
+        return NextResponse.next()
+    }
 }
 
 // Specify which routes should be handled by the middleware

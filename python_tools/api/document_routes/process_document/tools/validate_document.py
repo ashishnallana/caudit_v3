@@ -8,6 +8,8 @@ import re
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from datetime import datetime
+from .update_in_db import update_in_db
 
 # Load environment variables
 load_dotenv()
@@ -18,7 +20,7 @@ client = OpenAI(
     api_key="ollama",  # required, but unused
 )
 
-async def validate_document(content: List[str]) -> Dict:
+async def validate_document(content: List[str], job_id: str = None) -> Dict:
     """
     Validate the document content to check if it's a valid financial document or invoice
     """
@@ -37,7 +39,17 @@ async def validate_document(content: List[str]) -> Dict:
         # Check if content exists
         if not content or len(content) == 0:
             validation_results["is_valid"] = False
-            validation_results["errors"].append("Document has no content")
+            validation_results["errors"] = ["Document has no content"]
+            if job_id:
+                await update_in_db(
+                    item_id=job_id,
+                    updated_data={
+                        "status": "failed",
+                        "error_message": "Document has no content",
+                        "last_run_at": datetime.utcnow().isoformat()
+                    },
+                    table_name="document_jobs"
+                )
             return validation_results
 
         validation_results["checks"]["has_content"] = True
@@ -87,12 +99,30 @@ async def validate_document(content: List[str]) -> Dict:
         validation_results["document_type"] = analysis_data.get("document_type", None)
         validation_results["confidence_score"] = analysis_data.get("confidence_score", 0.0)
         validation_results["is_valid"] = analysis_data.get("is_valid", False)
-        
+
+        if not validation_results["is_valid"] and job_id:
+            await update_in_db(
+                item_id=job_id,
+                updated_data={
+                    "status": "failed",
+                    "error_message": f"Document validation failed: {analysis_data.get('explanation', 'Unknown reason')}",
+                    "last_run_at": datetime.utcnow().isoformat()
+                },
+                table_name="document_jobs"
+            )
 
         return validation_results
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error during document validation: {str(e)}"
-        ) 
+        error_message = f"Error during document validation: {str(e)}"
+        if job_id:
+            await update_in_db(
+                item_id=job_id,
+                updated_data={
+                    "status": "failed",
+                    "error_message": error_message,
+                    "last_run_at": datetime.utcnow().isoformat()
+                },
+                table_name="document_jobs"
+            )
+        raise HTTPException(status_code=500, detail=error_message) 

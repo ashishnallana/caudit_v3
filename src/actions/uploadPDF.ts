@@ -51,18 +51,36 @@ export async function uploadPDF(formData: FormData, uid: string) {
             return { success: false, error: error.message }
         }
 
-        // agent call
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`, {
+        // Create document job
+        const newProcessDetails = {
+            user_id: session.user.id,
+            status: "pending",
+            last_run_at: new Date().toISOString(),
+            file_url: publicUrl,
+        };
+
+        const { data: newDocJob, error: jobError } = await supabase
+            .from('document_jobs')
+            .insert(newProcessDetails)
+            .select()
+            .single();
+
+        if (jobError) {
+            console.error('Error creating document job:', jobError);
+            return { success: false, error: jobError.message };
+        }
+
+        // Start processing in the background without waiting for it
+        fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ "document_url": publicUrl }),
+            body: JSON.stringify({ "document_url": publicUrl, "job_id": newDocJob.id }),
+        }).catch(error => {
+            console.error('Error starting document processing:', error);
         });
-
-        const processingResponse = await response.json();
-        console.log(processingResponse);
 
         return {
             success: true,

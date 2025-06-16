@@ -36,35 +36,33 @@ function FileDrop() {
       setIsUploading(true);
 
       try {
-        const newUploadedFiles: string[] = [];
+        // Upload files one by one to show progress
         for (const file of pdfFiles) {
           const formData = new FormData();
           formData.append("file", file);
-
           const result = await uploadPDF(formData, user.id);
 
           if (!result.success) {
             throw new Error(result.error);
           }
 
-          newUploadedFiles.push(file.name);
+          // Update uploaded files list immediately after each successful upload
+          setUploadedFiles((prev) => [...prev, file.name]);
         }
 
-        setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
-        // Clear uploaded files list after 5 seconds
-        setTimeout(() => {
-          setUploadedFiles([]);
-        }, 5000);
+        // Redirect after all uploads are complete
+        router.push("/entries");
       } catch (error) {
         console.error("Upload failed:", error);
-        alert(
-          `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        console.error(
+          `Upload failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
         );
-      } finally {
         setIsUploading(false);
       }
     },
-    [user]
+    [user, router]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
