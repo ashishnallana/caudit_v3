@@ -1,12 +1,12 @@
-'use client'
-import { useState } from 'react'
-import Link from 'next/link'
-import { useAuth } from '@/context/AuthContext'
-import Image from 'next/image'
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import Image from "next/image";
 
 export default function Header() {
-  const { user, signOut } = useAuth()
-  const [showDropdown, setShowDropdown] = useState(false)
+  const { user, signOut } = useAuth();
+  const [showDropdown, setShowDropdown] = useState(false);
 
   return (
     <header className="bg-blue-100 shadow-sm">
@@ -76,5 +76,5 @@ export default function Header() {
         </div>
       </div>
     </header>
-  )
-} 
+  );
+}

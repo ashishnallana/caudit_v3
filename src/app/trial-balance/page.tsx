@@ -29,7 +29,57 @@ export default function TrialBalancePage() {
     null
   );
   const [appliedDate, setAppliedDate] = useState<string | null>(null);
+  const [isGeneratingFinalAccounts, setIsGeneratingFinalAccounts] =
+    useState(false);
   const supabase = createClientComponentClient();
+
+  const generateFinalAccounts = async () => {
+    try {
+      setIsGeneratingFinalAccounts(true);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setError("No active session found");
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/generate-final-accounts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            trialBalance,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(result);
+
+      if (result.success) {
+        // Handle successful generation - you might want to redirect or show a success message
+        alert("Final accounts generated successfully!");
+      } else {
+        throw new Error(result.error || "Failed to generate final accounts");
+      }
+    } catch (err) {
+      console.error("Error generating final accounts:", err);
+      setError("Failed to generate final accounts");
+    } finally {
+      setIsGeneratingFinalAccounts(false);
+    }
+  };
 
   useEffect(() => {
     const fetchTrialBalance = async () => {
@@ -206,66 +256,85 @@ export default function TrialBalancePage() {
       {trialBalance.debit.length === 0 && trialBalance.credit.length === 0 ? (
         <p className="text-gray-500">No accounts found.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-            <thead>
-              <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
-                <th className="py-3 px-6 text-left">Particulars</th>
-                <th className="py-3 px-6 text-right">Debit (Rs.)</th>
-                <th className="py-3 px-6 text-right">Credit (Rs.)</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-600 text-sm font-light">
-              {[...trialBalance.debit, ...trialBalance.credit]
-                .sort((a, b) => a.account_name.localeCompare(b.account_name))
-                .map((account) => (
-                  <tr
-                    key={account.account_name}
-                    className="border-b border-gray-200 hover:bg-gray-100"
-                  >
-                    <td className="py-3 px-6 text-left whitespace-nowrap">
-                      {account.account_name}
-                    </td>
-                    <td className="py-3 px-6 text-right">
-                      {trialBalance.debit.some(
-                        (d) => d.account_name === account.account_name
-                      )
-                        ? account.balance_amount.toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "INR",
-                          })
-                        : ""}
-                    </td>
-                    <td className="py-3 px-6 text-right">
-                      {trialBalance.credit.some(
-                        (c) => c.account_name === account.account_name
-                      )
-                        ? account.balance_amount.toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "INR",
-                          })
-                        : ""}
-                    </td>
-                  </tr>
-                ))}
-              <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal font-bold">
-                <td className="py-3 px-6 text-left">Total</td>
-                <td className="py-3 px-6 text-right">
-                  {trialBalance.total_debit.toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "INR",
-                  })}
-                </td>
-                <td className="py-3 px-6 text-right">
-                  {trialBalance.total_credit.toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "INR",
-                  })}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="mb-6">
+            <button
+              onClick={generateFinalAccounts}
+              disabled={isGeneratingFinalAccounts}
+              className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              {isGeneratingFinalAccounts ? (
+                <span className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                  Generating...
+                </span>
+              ) : (
+                "Generate Final Accounts"
+              )}
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
+                  <th className="py-3 px-6 text-left">Particulars</th>
+                  <th className="py-3 px-6 text-right">Debit (Rs.)</th>
+                  <th className="py-3 px-6 text-right">Credit (Rs.)</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-600 text-sm font-light">
+                {[...trialBalance.debit, ...trialBalance.credit]
+                  .sort((a, b) => a.account_name.localeCompare(b.account_name))
+                  .map((account) => (
+                    <tr
+                      key={account.account_name}
+                      className="border-b border-gray-200 hover:bg-gray-100"
+                    >
+                      <td className="py-3 px-6 text-left whitespace-nowrap">
+                        {account.account_name}
+                      </td>
+                      <td className="py-3 px-6 text-right">
+                        {trialBalance.debit.some(
+                          (d) => d.account_name === account.account_name
+                        )
+                          ? account.balance_amount.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "INR",
+                            })
+                          : ""}
+                      </td>
+                      <td className="py-3 px-6 text-right">
+                        {trialBalance.credit.some(
+                          (c) => c.account_name === account.account_name
+                        )
+                          ? account.balance_amount.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "INR",
+                            })
+                          : ""}
+                      </td>
+                    </tr>
+                  ))}
+                <tr className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal font-bold">
+                  <td className="py-3 px-6 text-left">Total</td>
+                  <td className="py-3 px-6 text-right">
+                    {trialBalance.total_debit.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "INR",
+                    })}
+                  </td>
+                  <td className="py-3 px-6 text-right">
+                    {trialBalance.total_credit.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "INR",
+                    })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
