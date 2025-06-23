@@ -20,61 +20,24 @@ client = OpenAI(
     api_key="ollama",  # required, but unused
 )
 
-async def validate_document(content: List[str], job_id: str = None) -> Dict:
+async def validate_document(document_content: List[str], transaction_description: str) -> Dict:
     """
-    Validate the document content to check if it's a valid financial document or invoice
+    Validate the document content and the transaction's description to check if it's a valid transaction to make a journal entry.
     """
     try:
-        validation_results = {
-            "is_valid": True,
-            "checks": {
-                "has_content": False,
-                "has_required_fields": False
-            },
-            "errors": None,
-            "document_type": None,
-            "confidence_score": 0.0
-        }
+        # Combine all pages of the document
+        document_content_str = " ".join(document_content)
 
-        # Check if content exists
-        if not content or len(content) == 0:
-            validation_results["is_valid"] = False
-            validation_results["errors"] = ["Document has no content"]
-            if job_id:
-                await update_in_db(
-                    item_id=job_id,
-                    updated_data={
-                        "status": "failed",
-                        "error_message": "Document has no content",
-                        "last_run_at": datetime.utcnow().isoformat()
-                    },
-                    table_name="document_jobs"
-                )
-            return validation_results
-
-        validation_results["checks"]["has_content"] = True
-
-        # Combine all pages for analysis
-        full_text = " ".join(content)
-
-        # Prepare the prompt for OpenAI
         prompt = f"""
-        Analyze the following document content and determine:
-        1. Is this a financial document or invoice or some receipt?
-        2. What type of document is it specifically? Choose one out of the following (sales_invoices, purchase_invoices, expense_bills, cash_receipts, cash_payments, bank_transactions)
-        3. Does it contain essential financial fields (amounts, dates, parties involved)?
-        4. What is your confidence score (0-1) in this assessment?
-
-        Document content:
-        {full_text[:4000]}
+        Analyze the following document content and transaction description and determine if it is a valid transaction with a supporting document.
+        
+        Transaction description: "{transaction_description}"
+        Document content: ```{document_content_str[:4000]}```
 
         Respond in JSON format:
         {{
-            "is_valid": boolean,
-            "document_type": string,
-            "has_required_fields": boolean,
-            "confidence_score": float,
-            "explanation": string
+            "is_valid_data": boolean (true if the document and the description supports a valid transaction, otherwise false),
+            "description" : str (Suggest a more suited description for the transaction based on the document content and previous description)
         }}
         """ 
 
@@ -82,7 +45,7 @@ async def validate_document(content: List[str], job_id: str = None) -> Dict:
         response = client.chat.completions.create(
             model="llama3:latest",
             messages=[
-                {"role": "system", "content": "You are a document analysis expert specializing in financial documents and invoices."},
+                {"role": "system", "content": "You are an expert in accounting, your job is to check if the given data supports a valid transaction to create a journal entry."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,  # Low temperature for more consistent results
@@ -90,39 +53,12 @@ async def validate_document(content: List[str], job_id: str = None) -> Dict:
         )
 
         # Parse the response
-        analysis = response.choices[0].message.content
+        result = response.choices[0].message.content
         import json
-        analysis_data = json.loads(analysis)
+        result_json = json.loads(result)
 
-        # Map the analysis data to validation results
-        validation_results["checks"]["has_required_fields"] = analysis_data.get("has_required_fields", False)
-        validation_results["document_type"] = analysis_data.get("document_type", None)
-        validation_results["confidence_score"] = analysis_data.get("confidence_score", 0.0)
-        validation_results["is_valid"] = analysis_data.get("is_valid", False)
-
-        if not validation_results["is_valid"] and job_id:
-            await update_in_db(
-                item_id=job_id,
-                updated_data={
-                    "status": "failed",
-                    "error_message": f"Document validation failed: {analysis_data.get('explanation', 'Unknown reason')}",
-                    "last_run_at": datetime.utcnow().isoformat()
-                },
-                table_name="document_jobs"
-            )
-
-        return validation_results
+        return result_json
 
     except Exception as e:
         error_message = f"Error during document validation: {str(e)}"
-        if job_id:
-            await update_in_db(
-                item_id=job_id,
-                updated_data={
-                    "status": "failed",
-                    "error_message": error_message,
-                    "last_run_at": datetime.utcnow().isoformat()
-                },
-                table_name="document_jobs"
-            )
         raise HTTPException(status_code=500, detail=error_message) 
