@@ -59,14 +59,21 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         # print(extracted_document_content)
         extracted_transaction_details = await validate_and_extract_details(extracted_document_content["content"], payload.description)
         created_journal_entry = await create_journal_entry(extracted_transaction_details, payload.job_id)
-        created_ledger_entries = await create_ledger_entry(created_journal_entry, payload.job_id) # [entry1, entry2]    
+        # created_ledger_entries = await create_ledger_entry(created_journal_entry, payload.job_id) # [entry1, entry2]    
+
+        created_journal_entry["user_id"] = user_id
+        created_journal_entry["reference_no"] = extracted_transaction_details["reference_no"]
+        created_journal_entry["job_id"] = payload.job_id
+
+        saved_journal_entry = await save_to_db(created_journal_entry, "journal_entry") 
 
         return {
             "success": True,
             "extracted_document_content": extracted_document_content,
             "extracted_transaction_details": extracted_transaction_details,
             "created_journal_entry": created_journal_entry,
-            "created_ledger_entries": created_ledger_entries
+            "saved_journal_entry": saved_journal_entry
+            # "created_ledger_entries": created_ledger_entries
         }
     
     except Exception as e:
