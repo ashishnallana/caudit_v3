@@ -1,6 +1,8 @@
 """
 Creates ledger entries from journal entry data.
 """
+
+from fastapi import HTTPException
 from typing import Dict, List
 from datetime import datetime
 from openai import OpenAI
@@ -37,43 +39,35 @@ async def create_ledger_entry(journal_entry: Dict, job_id: str = None) -> Dict:
         # we will be creating 2 entries for each account involved in the  journal entry
 
         entry1 = {
-            "account_name": journal_entry_json["account_debited"],
+            "account_name": journal_entry_json["debit_account"],
             "transaction_type": "debit",
             "amount": journal_entry_json["amount"],
             "entry_date": journal_entry_json["entry_date"],
-            "description": f"""To {journal_entry_json["account_credited"]}"""
+            "description": f"""To {journal_entry_json["credit_account"]}"""
 
         }
 
         entry2 = {
-            "account_name": journal_entry_json["account_credited"],
+            "account_name": journal_entry_json["credit_account"],
             "transaction_type": "credit",
             "amount": journal_entry_json["amount"],
             "entry_date": journal_entry_json["entry_date"],
-            "description": f"""By {journal_entry_json["account_debited"]}"""
+            "description": f"""By {journal_entry_json["debit_account"]}"""
         }
 
-            
-        return {
-            "success": True,
-            "ledger_entries": [entry1, entry2],
-            "error": None
-        }
+        return [entry1, entry2]    
+        
         
     except Exception as e:
-        error_message = str(e)
-        if job_id:
-            await update_in_db(
-                item_id=job_id,
-                updated_data={
-                    "status": "failed",
-                    "error_message": f"Error creating ledger entry: {error_message}",
-                    "last_run_at": datetime.utcnow().isoformat()
-                },
-                table_name="document_jobs"
-            )
-        return {
-            "success": False,
-            "ledger_entries": None,
-            "error": error_message
-        } 
+        error_message = f"Error creating ledger entries: {str(e)}"
+        raise HTTPException(status_code=500, detail=error_message) 
+        # if job_id:
+        #     await update_in_db(
+        #         item_id=job_id,
+        #         updated_data={
+        #             "status": "failed",
+        #             "error_message": f"Error creating ledger entry: {error_message}",
+        #             "last_run_at": datetime.utcnow().isoformat()
+        #         },
+        #         table_name="document_jobs"
+        #     )

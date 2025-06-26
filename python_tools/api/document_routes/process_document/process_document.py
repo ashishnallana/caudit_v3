@@ -7,6 +7,7 @@ from datetime import datetime
 from ..extract_document.extract_document import extract_document
 from ..extract_document.extract_document import DocumentUrl
 from .tools.validate_document import validate_document
+from .tools.validate_and_extract_details import validate_and_extract_details
 from .tools.extract_data import extract_data
 from .tools.save_to_db import save_to_db
 from .tools.update_in_db import update_in_db
@@ -43,7 +44,7 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         user_data = response.json()
         user_id = user_data["id"]
 
-        print("👉👉", user_id)
+        # print("👉👉", user_id)
 
         # starting new process
         # print("⭐", "starting new process")
@@ -53,18 +54,19 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         #     table_name="document_jobs"
         # )
 
-        success = True
-
         # Extract document content using the extract_document function
-        document_content = await extract_document(DocumentUrl(url=payload.document_url))
-        document_validation = await validate_document(document_content, payload.description)
-
-        if document_validation["is_valid_data"] == False:
-            raise HTTPException(status_code=400, detail="Invalid data") 
+        extracted_document_content = await extract_document(DocumentUrl(url=payload.document_url))
+        # print(extracted_document_content)
+        extracted_transaction_details = await validate_and_extract_details(extracted_document_content["content"], payload.description)
+        created_journal_entry = await create_journal_entry(extracted_transaction_details, payload.job_id)
+        created_ledger_entries = await create_ledger_entry(created_journal_entry, payload.job_id) # [entry1, entry2]    
 
         return {
-            "success": success,
-            "is_valid_information": document_validation
+            "success": True,
+            "extracted_document_content": extracted_document_content,
+            "extracted_transaction_details": extracted_transaction_details,
+            "created_journal_entry": created_journal_entry,
+            "created_ledger_entries": created_ledger_entries
         }
     
     except Exception as e:

@@ -1,6 +1,7 @@
 """
 Creates journal entries from extracted document data.
 """
+from fastapi import HTTPException
 from typing import Dict, List
 from datetime import datetime
 from openai import OpenAI
@@ -17,7 +18,7 @@ client = OpenAI(
     api_key="ollama",  # required, but unused
 )
 
-async def create_journal_entry(extracted_data: Dict, job_id: str = None) -> Dict:
+async def create_journal_entry(transaction_details: Dict, job_id: str) -> Dict:
     """
     Create journal entries based on the extracted document data.
     
@@ -29,21 +30,60 @@ async def create_journal_entry(extracted_data: Dict, job_id: str = None) -> Dict
         Dict: Journal entries with debit and credit transactions
     """
     try:
-        extracted_data_json = json.dumps(extracted_data["extracted_data"])
+        transaction_description = transaction_details["description"]
 
         prompt =  f"""
-            Create a correct and valid journal entry from the data provided.
+            Create a journal entry from the transaction description.
 
-            data : {extracted_data_json}
+            Generate response as in the following examples.
+            1. Purchased goods for cash Rs.10,000
+            {{
+                "debit_account": "Purchase A/c",
+                "credit_account": "Capital A/c",
+                "amount": 10,000,
+                "description": "Being purchased goods for cash"
+            }}
+            2. Purchased goods from Kiran Rs.10,000
+            {{
+                "debit_account": "Purchase A/c",
+                "credit_account": "Kiran A/c",
+                "amount": 10,000,
+                "description": "Being purchased goods from Kiran"
+            }}
+            3. Received interest Rs.2,000
+            {{
+                "debit_account": "Cash A/c",
+                "credit_account": "Interest A/c",
+                "amount": 2,000 ,
+                "description": "Being interest received"
+            }}
+            4. Paid Salaries Rs.30,000
+            {{
+                "debit_account": "Salaries A/c",
+                "credit_account": "Cash A/c",
+                "amount": 30,000,
+                "description": "Being salaries paid"
+            }}
+            5. Withdrawn cash from bank Rs. 8,000
+            {{
+                "debit_account": "Cash A/c",
+                "credit_account": "Bank A/c",
+                "amount": 8000 ,
+                "description": "Being withdrawn cash from bank"
+            }}
+
+            Transaction details : {transaction_description}
             create a journal entry in JSON format with the following keys
             {{
-                "account_debited": "(string) debit account name",
-                "account_credited": "(string) credit account name",
+                "debit_account": "(string) debit account name",
+                "credit_account": "(string) credit account name",
                 "amount": "(number) amount involved",
                 "description": "(string) a basic journal description"
             }}
 
             Make sure account names end with "A/c" example : Cash A/c, Bank A/c etc.
+
+            Return only a valid JSON object.
         """
 
         # Call OpenAI API
@@ -52,7 +92,7 @@ async def create_journal_entry(extracted_data: Dict, job_id: str = None) -> Dict
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a smart accountant. Your job is to create journal entry from given data."
+                    "content": "You are an expert in accounting, your job is to create a journal entry from provided transaction details."
                 },
                 {
                     "role": "user",
@@ -63,29 +103,23 @@ async def create_journal_entry(extracted_data: Dict, job_id: str = None) -> Dict
             response_format={ "type": "json_object" }
         )
 
-        journal_json = response.choices[0].message.content
-        data = json.loads(journal_json)
+        result = response.choices[0].message.content
+        print("Model output:", result)
+        result_json = json.loads(result)
+        result_json["entry_date"] = transaction_details["date"]
             
-        return {
-            "success": True,
-            "journal_entries": data,
-            "error": None
-        }
+        return result_json
         
     except Exception as e:
-        error_message = str(e)
-        if job_id:
-            await update_in_db(
-                item_id=job_id,
-                updated_data={
-                    "status": "failed",
-                    "error_message": f"Error creating journal entry: {error_message}",
-                    "last_run_at": datetime.utcnow().isoformat()
-                },
-                table_name="document_jobs"
-            )
-        return {
-            "success": False,
-            "journal_entries": None,
-            "error": error_message
-        }
+        error_message = f"Error creating journal entry: {str(e)}"
+        raise HTTPException(status_code=500, detail=error_message) 
+        # if job_id:
+        #     await update_in_db(
+        #         item_id=job_id,
+        #         updated_data={
+        #             "status": "failed",
+        #             "error_message": f"Error creating journal entry: {error_message}",
+        #             "last_run_at": datetime.utcnow().isoformat()
+        #         },
+        #         table_name="document_jobs"
+        #     )
