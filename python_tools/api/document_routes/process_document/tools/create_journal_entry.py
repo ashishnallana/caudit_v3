@@ -104,7 +104,6 @@ async def create_journal_entry(transaction_details: Dict, job_id: str) -> Dict:
         )
 
         result = response.choices[0].message.content
-        print("Model output:", result)
         result_json = json.loads(result)
         result_json["entry_date"] = transaction_details["date"]
             

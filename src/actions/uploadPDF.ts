@@ -55,6 +55,7 @@ export async function uploadPDF(formData: FormData, uid: string, description: st
         const newProcessDetails = {
             user_id: session.user.id,
             status: "pending",
+            description: description,
             last_run_at: new Date().toISOString(),
             file_url: publicUrl,
         };

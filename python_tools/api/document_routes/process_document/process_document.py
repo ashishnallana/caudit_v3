@@ -70,7 +70,7 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
             item_id=str(payload.job_id),
             updated_data={
                 "status": "parsed",
-                "journal_entry_id": saved_journal_entry["data"][0]["id"],
+                "journal_entry_id": saved_journal_entry[0]["id"],
                 "last_run_at": datetime.utcnow().isoformat()
             },
             table_name="job"

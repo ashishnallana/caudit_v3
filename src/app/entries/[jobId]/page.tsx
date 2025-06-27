@@ -24,6 +24,8 @@ interface Job {
     amount: number;
     description: string;
     reference_no: string;
+    debit_ledger_id?: string;
+    credit_ledger_id?: string;
   };
 }
 
@@ -48,7 +50,7 @@ export default function JobDetailsPage() {
         const { data, error } = await supabase
           .from("job")
           .select(
-            `*, journal_entry:journal_entry_id (id, entry_date, debit_account, credit_account, amount, description, reference_no)`
+            `*, journal_entry:journal_entry_id (id, entry_date, debit_account, credit_account, amount, description, reference_no, debit_ledger_id, credit_ledger_id)`
           )
           .eq("id", params.jobId)
           .eq("user_id", user.id)
@@ -152,6 +154,26 @@ export default function JobDetailsPage() {
                   <p>
                     <strong>Description:</strong>{" "}
                     {job.journal_entry.description}
+                  </p>
+                )}
+                {job.journal_entry.debit_ledger_id && (
+                  <p className="mt-4">
+                    <Link
+                      href={`/ledgers/${job.journal_entry.debit_ledger_id}`}
+                      className="text-blue-500 hover:text-blue-700 underline"
+                    >
+                      View Debited Ledger
+                    </Link>
+                  </p>
+                )}
+                {job.journal_entry.credit_ledger_id && (
+                  <p>
+                    <Link
+                      href={`/ledgers/${job.journal_entry.credit_ledger_id}`}
+                      className="text-blue-500 hover:text-blue-700 underline"
+                    >
+                      View Credited Ledger
+                    </Link>
                   </p>
                 )}
               </div>

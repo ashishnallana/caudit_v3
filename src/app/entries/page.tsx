@@ -24,6 +24,7 @@ interface Job {
     description: string;
     reference_no: string;
   };
+  description?: string;
 }
 
 export default function EntriesPage() {
@@ -34,6 +35,7 @@ export default function EntriesPage() {
     jobId: string;
     fileUrl: string;
     attempt_count: number;
+    description: string;
   } | null>(null);
   const [retrying, setRetrying] = useState(false);
   const supabase = createClientComponentClient();
@@ -66,6 +68,7 @@ export default function EntriesPage() {
           },
           body: JSON.stringify({
             document_url: selectedError.fileUrl,
+            description: selectedError.description,
             job_id: selectedError.jobId,
           }),
         }
@@ -166,10 +169,26 @@ export default function EntriesPage() {
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="font-medium">Job ID: {job.id}</p>
+                  <p className="font-medium">
+                    {job.description ? (
+                      job.description
+                    ) : (
+                      <span className="italic text-gray-400">
+                        No description
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-gray-500">
                     Created: {new Date(job.created_at).toLocaleString()}
                   </p>
+                  <a
+                    href={job.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-1 px-3 py-1 bg-gray-100 text-blue-700 rounded hover:bg-gray-200 text-sm transition-colors"
+                  >
+                    Open PDF
+                  </a>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
@@ -201,6 +220,7 @@ export default function EntriesPage() {
                           jobId: job.id,
                           fileUrl: job.file_url,
                           attempt_count: job.attempt_count,
+                          description: job.description || "",
                         })
                       }
                       className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
