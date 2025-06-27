@@ -53,19 +53,9 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
             table_name="job"
         )
 
-        # print("👉👉", user_id)
-
-        # starting new process
-        # print("⭐", "starting new process")
-        # result = await update_in_db(
-        #     item_id=str(payload.job_id),
-        #     updated_data={"status": "in_progress"},  # Only include the field you want to update
-        #     table_name="document_jobs"
-        # )
 
         # Extract document content using the extract_document function
         extracted_document_content = await extract_document(DocumentUrl(url=payload.document_url))
-        # print(extracted_document_content)
         extracted_transaction_details = await validate_and_extract_details(extracted_document_content["content"], payload.description)
         created_journal_entry = await create_journal_entry(extracted_transaction_details, payload.job_id)
         # created_ledger_entries = await create_ledger_entry(created_journal_entry, payload.job_id) # [entry1, entry2]    
@@ -80,6 +70,7 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
             item_id=str(payload.job_id),
             updated_data={
                 "status": "parsed",
+                "journal_entry_id": saved_journal_entry["data"][0]["id"],
                 "last_run_at": datetime.utcnow().isoformat()
             },
             table_name="job"
