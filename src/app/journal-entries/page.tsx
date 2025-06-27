@@ -11,17 +11,16 @@ import JournalEntryTable from "@/components/JournalEntryTable";
 
 interface JournalEntry {
   id: string;
-  account_credited: string;
-  account_debited: string;
-  amount: number;
-  created_at: string;
-  currency: string;
-  description: string;
-  entry_date: string;
-  source_document_url: string;
-  source_id: string;
-  source_type: string;
   user_id: string;
+  created_at: string;
+  entry_date: string;
+  debit_account: string;
+  credit_account: string;
+  amount: number;
+  description: string;
+  reference_no: string;
+  debit_ledger_id: string;
+  credit_ledger_id: string;
 }
 
 interface Column {
@@ -31,11 +30,11 @@ interface Column {
 }
 
 const columns: Column[] = [
+  { key: "reference_no", label: "Reference No" },
   { key: "description", label: "Description" },
   { key: "amount", label: "Amount" },
-  { key: "currency", label: "Currency" },
-  { key: "account_debited", label: "Account Debited" },
-  { key: "account_credited", label: "Account Credited" },
+  { key: "debit_account", label: "Debit Account" },
+  { key: "credit_account", label: "Credit Account" },
   {
     key: "entry_date",
     label: "Entry Date",
@@ -74,8 +73,8 @@ export default function JournalEntriesPage() {
         }
 
         const { data, error: fetchError } = await supabase
-          .from("journal_entries")
-          .select("*")
+          .from("journal_entry")
+          .select("*, debit_ledger_id, credit_ledger_id")
           .eq("user_id", session.user.id)
           .order("entry_date", { ascending: false });
 

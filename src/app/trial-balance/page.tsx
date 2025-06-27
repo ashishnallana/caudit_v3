@@ -87,39 +87,31 @@ export default function TrialBalancePage() {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-
         if (!session) {
           setError("No active session found");
           setIsLoading(false);
           return;
         }
-
         let calculatedDebitAccounts: TrialBalanceAccount[] = [];
         let calculatedCreditAccounts: TrialBalanceAccount[] = [];
         let calculatedTotalDebit = 0;
         let calculatedTotalCredit = 0;
-
         if (appliedDate) {
-          const { data: uniqueAccounts, error: uniqueAccountsError } =
-            await supabase
-              .from("ledger_balances")
-              .select("account_name")
-              .eq("user_id", session.user.id);
-
-          if (uniqueAccountsError) throw uniqueAccountsError;
-
+          // Get all ledgers for the user
+          const { data: ledgers, error: ledgersError } = await supabase
+            .from("ledgers")
+            .select("id, account_name")
+            .eq("user_id", session.user.id);
+          if (ledgersError) throw ledgersError;
           const accountBalances: { [key: string]: number } = {};
-
-          for (const account of uniqueAccounts || []) {
+          for (const ledger of ledgers || []) {
             const { data: entries, error: entriesError } = await supabase
-              .from("ledger_entries")
+              .from("ledger_entry")
               .select("transaction_type, amount, entry_date")
               .eq("user_id", session.user.id)
-              .eq("account_name", account.account_name)
+              .eq("account_name", ledger.account_name)
               .lte("entry_date", appliedDate);
-
             if (entriesError) throw entriesError;
-
             let netBalance = 0;
             entries?.forEach((entry) => {
               if (entry.transaction_type === "debit") {
@@ -128,9 +120,8 @@ export default function TrialBalancePage() {
                 netBalance -= entry.amount;
               }
             });
-            accountBalances[account.account_name] = netBalance;
+            accountBalances[ledger.account_name] = netBalance;
           }
-
           Object.keys(accountBalances).forEach((account_name) => {
             const balance = accountBalances[account_name];
             const account: TrialBalanceAccount = {
@@ -138,7 +129,6 @@ export default function TrialBalancePage() {
               balance_amount: Math.abs(balance),
               last_updated_at: new Date().toISOString(),
             };
-
             if (balance >= 0) {
               calculatedDebitAccounts.push(account);
               calculatedTotalDebit += balance;
@@ -148,37 +138,33 @@ export default function TrialBalancePage() {
             }
           });
         } else {
-          const { data: balances, error: balancesError } = await supabase
-            .from("ledger_balances")
-            .select("*")
+          // No date filter: use ledgers table
+          const { data: ledgers, error: ledgersError } = await supabase
+            .from("ledgers")
+            .select("account_name, net_amount, last_updated_at")
             .eq("user_id", session.user.id);
-
-          if (balancesError) throw balancesError;
-
-          balances?.forEach((balance) => {
+          if (ledgersError) throw ledgersError;
+          ledgers?.forEach((ledger) => {
             const account: TrialBalanceAccount = {
-              account_name: balance.account_name,
-              balance_amount: Math.abs(balance.balance_amount),
-              last_updated_at: balance.last_updated_at,
+              account_name: ledger.account_name,
+              balance_amount: Math.abs(ledger.net_amount),
+              last_updated_at: ledger.last_updated_at,
             };
-
-            if (balance.balance_amount >= 0) {
+            if (ledger.net_amount >= 0) {
               calculatedDebitAccounts.push(account);
-              calculatedTotalDebit += balance.balance_amount;
+              calculatedTotalDebit += ledger.net_amount;
             } else {
               calculatedCreditAccounts.push(account);
-              calculatedTotalCredit += Math.abs(balance.balance_amount);
+              calculatedTotalCredit += Math.abs(ledger.net_amount);
             }
           });
         }
-
         calculatedDebitAccounts.sort((a, b) =>
           a.account_name.localeCompare(b.account_name)
         );
         calculatedCreditAccounts.sort((a, b) =>
           a.account_name.localeCompare(b.account_name)
         );
-
         setTrialBalance({
           debit: calculatedDebitAccounts,
           credit: calculatedCreditAccounts,
@@ -191,7 +177,6 @@ export default function TrialBalancePage() {
         setIsLoading(false);
       }
     };
-
     fetchTrialBalance();
   }, [supabase, appliedDate]);
 

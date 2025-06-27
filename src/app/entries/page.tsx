@@ -4,70 +4,58 @@ import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
 
-interface Document {
-  id: string;
-  file_url: string;
-  extracted_data: any;
-}
-
-interface JournalEntry {
-  id: string;
-  entry_date: string;
-  account_debited: string;
-  account_credited: string;
-  amount: number;
-  description?: string;
-}
-
-interface DocumentJob {
+interface Job {
   id: string;
   user_id: string;
   status: string;
   error_message?: string;
+  attempt_count: number;
+  last_run_at?: string;
   created_at: string;
+  updated_at: string;
   file_url: string;
-  documents?: Document;
-  journal_entries?: JournalEntry;
+  journal_entry_id?: string;
+  journal_entry?: {
+    id: string;
+    entry_date: string;
+    debit_account: string;
+    credit_account: string;
+    amount: number;
+    description: string;
+    reference_no: string;
+  };
 }
 
 export default function EntriesPage() {
-  const [documentJobs, setDocumentJobs] = useState<DocumentJob[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedError, setSelectedError] = useState<{
     message: string;
     jobId: string;
     fileUrl: string;
+    attempt_count: number;
   } | null>(null);
   const [retrying, setRetrying] = useState(false);
   const supabase = createClientComponentClient();
 
   const handleRetry = async () => {
     if (!selectedError) return;
-
     try {
       setRetrying(true);
-
-      // Get the current session
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error("No active session found");
-      }
-
-      // Update job status to pending
+      if (!session?.access_token) throw new Error("No active session found");
       const { error: updateError } = await supabase
-        .from("document_jobs")
+        .from("job")
         .update({
           status: "pending",
           error_message: null,
           last_run_at: new Date().toISOString(),
+          attempt_count: (selectedError.attempt_count || 0) + 1,
         })
         .eq("id", selectedError.jobId);
-
       if (updateError) throw updateError;
-
-      // Call the processing API
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/document/process-document`,
         {
@@ -82,12 +70,7 @@ export default function EntriesPage() {
           }),
         }
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to retry processing");
-      }
-
-      // Close the error modal
+      if (!response.ok) throw new Error("Failed to retry processing");
       setSelectedError(null);
     } catch (error) {
       console.error("Retry error:", error);
@@ -98,82 +81,54 @@ export default function EntriesPage() {
   };
 
   useEffect(() => {
-    const fetchDocumentJobs = async () => {
+    const fetchJobs = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user as { id: string } | null;
+        if (!user || !user.id) {
           setLoading(false);
           return;
         }
-
-        const { data, error } = await supabase
-          .from("document_jobs")
+        const { data: jobsData, error } = await supabase
+          .from("job")
           .select(
-            `
-            *,
-            documents:document_id (
-              id,
-              file_url,
-              extracted_data
-            ),
-            journal_entries:journal_entry_id (
-              id,
-              entry_date,
-              account_debited,
-              account_credited,
-              amount,
-              description
-            )
-          `
+            `*, journal_entry:journal_entry_id (id, entry_date, debit_account, credit_account, amount, description, reference_no)`
           )
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
-
         if (error) {
-          console.error("Error fetching document jobs:", error);
+          console.error("Error fetching jobs:", error);
           return;
         }
-
-        setDocumentJobs(data || []);
+        setJobs(jobsData || []);
       } catch (error) {
         console.error("Error:", error);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchDocumentJobs();
-
-    // Set up real-time subscription
+    fetchJobs();
     const channel = supabase
-      .channel("document_jobs_changes")
+      .channel("job_changes")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "document_jobs",
-        },
+        { event: "*", schema: "public", table: "job" },
         async (payload) => {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-          if (!user) return;
-
+          const { data } = await supabase.auth.getUser();
+          const user = data?.user as { id: string } | null;
+          if (!user || !user.id) return;
           if (
             payload.new &&
+            typeof payload.new === "object" &&
             "user_id" in payload.new &&
-            payload.new.user_id === user.id
+            (payload.new as Job).user_id === user.id
           ) {
-            setDocumentJobs((currentJobs) => {
+            setJobs((currentJobs) => {
               if (payload.eventType === "INSERT") {
-                return [payload.new as DocumentJob, ...currentJobs];
+                return [payload.new as Job, ...currentJobs];
               } else if (payload.eventType === "UPDATE") {
                 return currentJobs.map((job) =>
-                  job.id === payload.new.id ? (payload.new as DocumentJob) : job
+                  job.id === payload.new.id ? (payload.new as Job) : job
                 );
               } else if (payload.eventType === "DELETE") {
                 return currentJobs.filter((job) => job.id !== payload.old.id);
@@ -184,7 +139,6 @@ export default function EntriesPage() {
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
@@ -201,11 +155,11 @@ export default function EntriesPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Your Document Jobs</h1>
-      {documentJobs.length === 0 ? (
+      {jobs.length === 0 ? (
         <p className="text-gray-500">No document jobs found.</p>
       ) : (
         <div className="grid gap-4">
-          {documentJobs.map((job) => (
+          {jobs.map((job) => (
             <div
               key={job.id}
               className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow"
@@ -246,6 +200,7 @@ export default function EntriesPage() {
                             job.error_message || "No error message available",
                           jobId: job.id,
                           fileUrl: job.file_url,
+                          attempt_count: job.attempt_count,
                         })
                       }
                       className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"

@@ -5,10 +5,11 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
 
 interface LedgerAccount {
-  account_name: string;
-  balance_amount: number;
+  id: string;
+  user_id: string;
   last_updated_at: string;
-  ledger_balance_id: string;
+  net_amount: number;
+  account_name: string;
 }
 
 export default function LedgersPage() {
@@ -23,51 +24,19 @@ export default function LedgersPage() {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-
         if (!session) {
           setError("No active session found");
           setIsLoading(false);
           return;
         }
-
-        // First get unique account names from ledger_entries
-        const { data: uniqueAccounts, error: uniqueAccountsError } =
-          await supabase
-            .from("ledger_entries")
-            .select("account_name")
-            .eq("user_id", session.user.id)
-            .order("account_name", { ascending: true });
-
-        if (uniqueAccountsError) throw uniqueAccountsError;
-
-        // Get unique account names by filtering duplicates
-        const uniqueAccountNames = Array.from(
-          new Set(uniqueAccounts?.map((entry) => entry.account_name))
-        ).map((account_name) => ({ account_name }));
-
-        // Get the corresponding balances
-        const { data: balances, error: balancesError } = await supabase
-          .from("ledger_balances")
+        // Fetch ledgers directly
+        const { data, error: ledgersError } = await supabase
+          .from("ledgers")
           .select("*")
-          .eq("user_id", session.user.id);
-
-        if (balancesError) throw balancesError;
-
-        // Combine the data
-        const accounts = uniqueAccountNames.map((entry) => {
-          const balance = balances?.find(
-            (b) => b.account_name === entry.account_name
-          );
-          return {
-            account_name: entry.account_name,
-            balance_amount: balance?.balance_amount || 0,
-            last_updated_at:
-              balance?.last_updated_at || new Date().toISOString(),
-            ledger_balance_id: balance?.id || "",
-          };
-        });
-
-        setLedgerAccounts(accounts);
+          .eq("user_id", session.user.id)
+          .order("account_name", { ascending: true });
+        if (ledgersError) throw ledgersError;
+        setLedgerAccounts(data || []);
       } catch (err) {
         setError("Failed to fetch ledger accounts");
         setLedgerAccounts([]);
@@ -75,7 +44,6 @@ export default function LedgersPage() {
         setIsLoading(false);
       }
     };
-
     fetchLedgerAccounts();
   }, [supabase]);
 
@@ -121,19 +89,19 @@ export default function LedgersPage() {
                 <div className="flex items-center gap-4">
                   <p
                     className={`text-lg font-semibold ${
-                      account.balance_amount >= 0
+                      account.net_amount >= 0
                         ? "text-green-600"
                         : "text-red-600"
                     }`}
                   >
-                    {account.balance_amount.toLocaleString("en-US", {
+                    {account.net_amount.toLocaleString("en-US", {
                       style: "currency",
                       currency: "INR",
                     })}
                   </p>
-                  {account.ledger_balance_id && (
+                  {account.id && (
                     <Link
-                      href={`/ledgers/${account.ledger_balance_id}`}
+                      href={`/ledgers/${account.id}`}
                       className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                     >
                       View Details

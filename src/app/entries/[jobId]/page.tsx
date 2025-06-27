@@ -5,44 +5,30 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-interface Document {
-  id: string;
-  file_url: string;
-  extracted_data: any;
-}
-
-interface JournalEntry {
-  id: string;
-  entry_date: string;
-  account_debited: string;
-  account_credited: string;
-  amount: number;
-  description?: string;
-  ledger_entries?: LedgerEntry[];
-}
-
-interface LedgerEntry {
-  id: string;
-  account_name: string;
-  entry_date: string;
-  transaction_type: "debit" | "credit";
-  amount: number;
-  description?: string;
-  created_at: string;
-  ledger_balance_id: string;
-}
-
-interface DocumentJob {
+interface Job {
   id: string;
   user_id: string;
   status: string;
+  error_message?: string;
+  attempt_count: number;
+  last_run_at?: string;
   created_at: string;
-  documents?: Document;
-  journal_entries?: JournalEntry;
+  updated_at: string;
+  file_url: string;
+  journal_entry_id?: string;
+  journal_entry?: {
+    id: string;
+    entry_date: string;
+    debit_account: string;
+    credit_account: string;
+    amount: number;
+    description: string;
+    reference_no: string;
+  };
 }
 
 export default function JobDetailsPage() {
-  const [job, setJob] = useState<DocumentJob | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const params = useParams();
   const supabase = createClientComponentClient();
@@ -60,34 +46,9 @@ export default function JobDetailsPage() {
         }
 
         const { data, error } = await supabase
-          .from("document_jobs")
+          .from("job")
           .select(
-            `
-            *,
-            documents:document_id (
-              id,
-              file_url,
-              extracted_data
-            ),
-            journal_entries:journal_entry_id (
-              id,
-              entry_date,
-              account_debited,
-              account_credited,
-              amount,
-              description,
-              ledger_entries (
-                id,
-                account_name,
-                entry_date,
-                transaction_type,
-                amount,
-                description,
-                created_at,
-                ledger_balance_id
-              )
-            )
-          `
+            `*, journal_entry:journal_entry_id (id, entry_date, debit_account, credit_account, amount, description, reference_no)`
           )
           .eq("id", params.jobId)
           .eq("user_id", user.id)
@@ -167,75 +128,32 @@ export default function JobDetailsPage() {
             <p>Created: {new Date(job.created_at).toLocaleString()}</p>
           </div>
 
-          {job.documents && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Document Details</h2>
-              <p className="mb-2">
-                File URL:{" "}
-                <a
-                  href={job.documents.file_url}
-                  className="text-blue-500 underline"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {job.documents.file_url}
-                </a>
-              </p>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium mb-2">Extracted Data:</h3>
-                <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                  {JSON.stringify(job.documents.extracted_data, null, 2)}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {job.journal_entries && (
+          {job.journal_entry && (
             <div>
               <h2 className="text-lg font-semibold mb-2">
                 Journal Entry Details
               </h2>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p>
-                  <strong>Date:</strong> {job.journal_entries.entry_date}
+                  <strong>Date:</strong> {job.journal_entry.entry_date}
                 </p>
                 <p>
                   <strong>Account Debited:</strong>{" "}
-                  {job.journal_entries.account_debited}
+                  {job.journal_entry.debit_account}
                 </p>
                 <p>
                   <strong>Account Credited:</strong>{" "}
-                  {job.journal_entries.account_credited}
+                  {job.journal_entry.credit_account}
                 </p>
                 <p>
-                  <strong>Amount:</strong> {job.journal_entries.amount}
+                  <strong>Amount:</strong> {job.journal_entry.amount}
                 </p>
-                {job.journal_entries.description && (
+                {job.journal_entry.description && (
                   <p>
                     <strong>Description:</strong>{" "}
-                    {job.journal_entries.description}
+                    {job.journal_entry.description}
                   </p>
                 )}
-
-                {job.journal_entries.ledger_entries &&
-                  job.journal_entries.ledger_entries.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="font-medium mb-2">
-                        Involved Ledger Books:
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {job.journal_entries.ledger_entries.map((entry) => (
-                          <Link
-                            key={entry.id}
-                            href={`/ledgers/${entry.ledger_balance_id}`}
-                            className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
-                          >
-                            {entry.account_name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
               </div>
             </div>
           )}

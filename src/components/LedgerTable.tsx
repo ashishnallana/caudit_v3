@@ -9,21 +9,20 @@ interface LedgerEntry {
   created_at: string;
 }
 
-interface LedgerBalance {
-  account_name: string;
-  balance_amount: number;
+interface Ledger {
+  id: string;
+  user_id: string;
   last_updated_at: string;
+  net_amount: number;
+  account_name: string;
 }
 
 interface LedgerTableProps {
   ledgerEntries: LedgerEntry[];
-  ledgerBalance: LedgerBalance | null;
+  ledger: Ledger;
 }
 
-const LedgerTable: React.FC<LedgerTableProps> = ({
-  ledgerEntries,
-  ledgerBalance,
-}) => {
+const LedgerTable: React.FC<LedgerTableProps> = ({ ledgerEntries, ledger }) => {
   const drEntries = ledgerEntries.filter((e) => e.transaction_type === "debit");
   const crEntries = ledgerEntries.filter(
     (e) => e.transaction_type === "credit"
@@ -88,7 +87,7 @@ const LedgerTable: React.FC<LedgerTableProps> = ({
                   {cr
                     ? cr.description.startsWith("By ")
                       ? cr.description
-                      : `By ${ledgerBalance?.account_name || "Cash A/c"}`
+                      : `By ${ledger.account_name}`
                     : ""}
                 </td>
                 <td className="border px-2 py-1"></td>
@@ -121,8 +120,8 @@ const LedgerTable: React.FC<LedgerTableProps> = ({
             <td className="border px-2 py-1">To Balance b/d</td>
             <td className="border px-2 py-1"></td>
             <td className="border px-2 py-1 text-right">
-              {ledgerBalance && ledgerBalance.balance_amount > 0
-                ? ledgerBalance.balance_amount.toLocaleString("en-IN")
+              {ledger.net_amount > 0
+                ? ledger.net_amount.toLocaleString("en-IN")
                 : ""}
             </td>
             <td className="border px-2 py-1">
@@ -131,10 +130,10 @@ const LedgerTable: React.FC<LedgerTableProps> = ({
             <td className="border px-2 py-1">By Balance c/d</td>
             <td className="border px-2 py-1"></td>
             <td className="border px-2 py-1 text-right">
-              {ledgerBalance && ledgerBalance.balance_amount < 0
-                ? Math.abs(ledgerBalance.balance_amount).toLocaleString("en-IN")
-                : ledgerBalance && ledgerBalance.balance_amount > 0
-                ? ledgerBalance.balance_amount.toLocaleString("en-IN")
+              {ledger.net_amount < 0
+                ? Math.abs(ledger.net_amount).toLocaleString("en-IN")
+                : ledger.net_amount > 0
+                ? ledger.net_amount.toLocaleString("en-IN")
                 : ""}
             </td>
           </tr>
