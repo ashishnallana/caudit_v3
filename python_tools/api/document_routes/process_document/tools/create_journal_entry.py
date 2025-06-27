@@ -111,7 +111,7 @@ async def create_journal_entry(transaction_details: Dict, job_id: str) -> Dict:
         return result_json
         
     except Exception as e:
-        error_message = f"Error creating journal entry: {str(e)}"
+        error_message = f"Journal Entry error : {str(e)}"
         raise HTTPException(status_code=500, detail=error_message) 
         # if job_id:
         #     await update_in_db(

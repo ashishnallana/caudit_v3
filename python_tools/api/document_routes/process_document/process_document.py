@@ -44,6 +44,15 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
         user_data = response.json()
         user_id = user_data["id"]
 
+        await update_in_db(
+            item_id=str(payload.job_id),
+            updated_data={
+                "status": "in progress",
+                "last_run_at": datetime.utcnow().isoformat()
+            },
+            table_name="job"
+        )
+
         # print("👉👉", user_id)
 
         # starting new process
@@ -67,6 +76,15 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
 
         saved_journal_entry = await save_to_db(created_journal_entry, "journal_entry") 
 
+        await update_in_db(
+            item_id=str(payload.job_id),
+            updated_data={
+                "status": "parsed",
+                "last_run_at": datetime.utcnow().isoformat()
+            },
+            table_name="job"
+        )   
+
         return {
             "success": True,
             "extracted_document_content": extracted_document_content,
@@ -79,13 +97,13 @@ async def process_document(payload: DocumentRequest ,request: Request) -> Dict:
     except Exception as e:
         error_message = str(e)
         # Update the job status to failed with error message
-        # await update_in_db(
-        #     item_id=str(payload.job_id),
-        #     updated_data={
-        #         "status": "failed",
-        #         "error_message": error_message,
-        #         "last_run_at": datetime.utcnow().isoformat()
-        #     },
-        #     table_name="document_jobs"
-        # )
-        raise HTTPException(status_code=500, detail=f"Error processing document: {error_message}")
+        await update_in_db(
+            item_id=str(payload.job_id),
+            updated_data={
+                "status": "failed",
+                "error_message": error_message,
+                "last_run_at": datetime.utcnow().isoformat()
+            },
+            table_name="job"
+        )
+        raise HTTPException(status_code=500, detail=f"Error : {error_message}")

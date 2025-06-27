@@ -71,5 +71,5 @@ async def validate_and_extract_details(document_content: List[str], transaction_
         return result_json
 
     except Exception as e:
-        error_message = f"Error during document validation: {str(e)}"
+        error_message = f"Data error : {str(e)}"
         raise HTTPException(status_code=500, detail=error_message) 

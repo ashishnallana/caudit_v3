@@ -8,7 +8,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-export async function uploadPDF(formData: FormData, uid: string) {
+export async function uploadPDF(formData: FormData, uid: string, description: string) {
     try {
         // Get the session using server-side Supabase client
         const cookieStore = cookies();
@@ -60,7 +60,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
         };
 
         const { data: newDocJob, error: jobError } = await supabase
-            .from('document_jobs')
+            .from('job')
             .insert(newProcessDetails)
             .select()
             .single();
@@ -77,7 +77,7 @@ export async function uploadPDF(formData: FormData, uid: string) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ "document_url": publicUrl, "job_id": newDocJob.id }),
+            body: JSON.stringify({ "document_url": publicUrl, "description": description, "job_id": newDocJob.id }),
         }).catch(error => {
             console.error('Error starting document processing:', error);
         });
